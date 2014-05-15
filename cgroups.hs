@@ -7,10 +7,10 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text, append)
 import Data.Text.Lazy (unpack)
 import Happstack.Lite (dir, serve, ServerPart, Response, msum, toResponse, path, ok)
-import Text.Blaze.Html5 (Html, (!), a, form, input, p, toHtml, label)
-import Text.Blaze.Html5.Attributes (action, enctype, href, name, size, type_, value)
+import Text.Blaze.Html5 (Html, (!), toHtml)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
+import Data.Monoid (mempty)
 
 
 main :: IO ()
@@ -30,21 +30,30 @@ myApp = msum
 
 template :: String -> Html -> Response
 template title body = toResponse $
-    H.html $ do
+    H.docTypeHtml ! A.lang "en" $ do
         H.head $ do
-            H.title (toHtml title)
+            H.meta ! A.charset "utf-8"
+            H.meta ! A.httpEquiv "X-UA-Compatible" ! A.content "IE=edge"
+            H.meta ! A.name "viewport" ! A.content "width=device-width, initial-scale=1"
+            H.title $ toHtml title
+            H.link ! A.href "css/bootstrap.min.css" ! A.rel "stylesheet"
         H.body $ do
+
+            H.h1 "Hello, world!"
             body
-            H.a ! href "/groups"     $ "Groups"
-            H.a ! href "/group/test" $ "Group test"
-            H.a ! href "/tasks"      $ "Tasks"
-            H.a ! href "/task/1234"  $ "Task 1234"
+            H.a ! A.href "/groups"     $ "Groups"
+            H.a ! A.href "/group/test" $ "Group test"
+            H.a ! A.href "/tasks"      $ "Tasks"
+            H.a ! A.href "/task/1234"  $ "Task 1234"
+
+            H.script ! A.src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" $ mempty
+            H.script ! A.src "js/bootstrap.min.js" $ mempty
 
 
 listGroups :: ServerPart Response
 listGroups = ok $
     template "Groups" $ do
-        p $ "Here are the cgroups:"
+        H.p $ "Here are the cgroups:"
         H.ul $ do
             H.li "123"
             H.li "456"
@@ -54,7 +63,7 @@ showGroup :: ServerPart Response
 showGroup = path $ \(name :: String) ->
     ok $ template ("Group " ++ name) $ do
         H.h1 $ toHtml name
-        p $ "Here are tasks in this cgroup:"
+        H.p $ "Here are tasks in this cgroup:"
         H.ul $ do
             H.li $ "123"
             H.li $ "456"
@@ -63,7 +72,7 @@ showGroup = path $ \(name :: String) ->
 listTasks :: ServerPart Response
 listTasks = ok $
     template "Tasks" $ do
-        p $ "Here are the tasks:"
+        H.p $ "Here are the tasks:"
         H.ul $ do
             H.li $ "123"
             H.li $ "456"
@@ -73,8 +82,8 @@ showTask :: ServerPart Response
 showTask = path $ \(pid :: Integer) ->
     ok $ template ("Task " ++ show pid) $ do
         H.h1 $ toHtml pid
-        p $ "full command line"
-        p $ "group"
+        H.p $ "full command line"
+        H.p $ "group"
         H.ul $ do
             H.li $ "123"
             H.li $ "456"
