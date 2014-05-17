@@ -33,21 +33,22 @@ template title body = toResponse $
     H.docTypeHtml ! A.lang "en" $ do
         H.head $ do
             H.meta ! A.charset "utf-8"
-            H.meta ! A.httpEquiv "X-UA-Compatible" ! A.content "IE=edge"
-            H.meta ! A.name "viewport" ! A.content "width=device-width, initial-scale=1"
             H.title $ toHtml title
-            H.link ! A.href "css/bootstrap.min.css" ! A.rel "stylesheet"
+            H.link ! A.href "/css/bootstrap.min.css" ! A.rel "stylesheet"
+            H.link ! A.href "/css/dashboard.css" ! A.rel "stylesheet"
         H.body $ do
-
-            H.h1 "Hello, world!"
-            body
-            H.a ! A.href "/groups"     $ "Groups"
-            H.a ! A.href "/group/test" $ "Group test"
-            H.a ! A.href "/tasks"      $ "Tasks"
-            H.a ! A.href "/task/1234"  $ "Task 1234"
-
-            H.script ! A.src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js" $ mempty
-            H.script ! A.src "js/bootstrap.min.js" $ mempty
+            H.div ! A.class_ "navbar navbar-inverse navbar-fixed-top" $ H.div ! A.class_ "container-fluid" $ do
+                H.div ! A.class_ "navbar-header" $ do
+                    H.a ! A.class_ "navbar-brand" ! A.href "#" $ "CGroups"
+            H.div ! A.class_ "container-fluid" $ H.div ! A.class_ "row" $ do
+                H.div ! A.class_ "col-sm-3 col-md-2 sidebar" $ do
+                    H.ul ! A.class_ "nav nav-sidebar" $ do
+                        H.li ! A.class_ "active" $ H.a ! A.href "/groups" $ "Groups"
+                        H.li $ H.a ! A.href "/tasks" $ "Tasks"
+                H.div ! A.class_ "col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main" $ do
+                    body
+            H.script ! A.src "/js/jquery.min.js" $ mempty
+            H.script ! A.src "/js/bootstrap.min.js" $ mempty
 
 
 listGroups :: ServerPart Response
