@@ -2,15 +2,13 @@
 
 module Main where
 
-import Control.Applicative ((<$>), optional)
-import Data.Maybe (fromMaybe)
-import Data.Text (Text, append)
-import Data.Text.Lazy (unpack)
+import Control.Monad (forM_)
+import Control.Monad.Trans (liftIO)
+import Data.Monoid (mempty)
 import Happstack.Lite (dir, serve, ServerPart, Response, msum, toResponse, path, ok)
-import Text.Blaze.Html5 (Html, (!), toHtml)
+import Text.Blaze.Html5 (Html, (!), toHtml, toValue)
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
-import Data.Monoid (mempty)
 
 import Helpers (getGroups)
 
@@ -54,12 +52,17 @@ template title body = toResponse $
 
 
 listGroups :: ServerPart Response
-listGroups = ok $
-    template "Groups" $ do
-        H.h1 $ "Available CGroups"
-        H.ul $ do
-            H.li $ H.a ! A.href "/group/amazing_group" $ "amazing_group"
-            H.li $ H.a ! A.href "/group/awesome_group" $ "awesome_group"
+listGroups = do
+    groups <- liftIO getGroups
+    ok $
+        template "Groups" $ do
+            H.h1 $ "Available CGroups"
+            H.ul $ forM_ groups groupToLi
+    where
+        groupToLi :: String -> Html
+        groupToLi group = H.li $ H.a ! A.href (toValue $ "group/" ++ group)
+                                     $ toHtml group
+
 
 
 showGroup :: ServerPart Response
