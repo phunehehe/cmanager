@@ -12,6 +12,8 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 import Data.Monoid (mempty)
 
+import Helpers (getGroups)
+
 
 main :: IO ()
 main = do
@@ -54,10 +56,10 @@ template title body = toResponse $
 listGroups :: ServerPart Response
 listGroups = ok $
     template "Groups" $ do
-        H.p $ "Here are the cgroups:"
+        H.h1 $ "Available CGroups"
         H.ul $ do
-            H.li "123"
-            H.li "456"
+            H.li $ H.a ! A.href "/group/amazing_group" $ "amazing_group"
+            H.li $ H.a ! A.href "/group/awesome_group" $ "awesome_group"
 
 
 showGroup :: ServerPart Response
@@ -66,25 +68,22 @@ showGroup = path $ \(name :: String) ->
         H.h1 $ toHtml name
         H.p $ "Here are tasks in this cgroup:"
         H.ul $ do
-            H.li $ "123"
-            H.li $ "456"
+            H.li $ H.a ! A.href "/task/1234" $ "1234"
+            H.li $ H.a ! A.href "/task/5678" $ "5678"
 
 
 listTasks :: ServerPart Response
 listTasks = ok $
     template "Tasks" $ do
-        H.p $ "Here are the tasks:"
+        H.h1 $ "Available Tasks"
         H.ul $ do
-            H.li $ "123"
-            H.li $ "456"
+            H.li $ H.a ! A.href "/task/1234" $ "1234"
+            H.li $ H.a ! A.href "/task/5678" $ "5678"
 
 
 showTask :: ServerPart Response
 showTask = path $ \(pid :: Integer) ->
     ok $ template ("Task " ++ show pid) $ do
         H.h1 $ toHtml pid
-        H.p $ "full command line"
-        H.p $ "group"
-        H.ul $ do
-            H.li $ "123"
-            H.li $ "456"
+        H.p $ "TODO: show full command line here"
+        H.a ! A.href "/group/amazing_group" $ "amazing_group"
