@@ -2,13 +2,15 @@
 
 module Main where
 
+import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5.Attributes as A
+
 import Control.Monad (forM_)
 import Control.Monad.Trans (liftIO)
 import Data.Monoid (mempty)
 import Happstack.Lite (dir, serve, ServerPart, Response, msum, toResponse, path, ok)
+import Network.HTTP.Base (urlEncode)
 import Text.Blaze.Html5 (Html, (!), toHtml, toValue)
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
 
 import Helpers (getGroups)
 
@@ -60,7 +62,7 @@ listGroups = do
             H.ul $ forM_ groups groupToLi
     where
         groupToLi :: String -> Html
-        groupToLi group = H.li $ H.a ! A.href (toValue $ "group/" ++ group)
+        groupToLi group = H.li $ H.a ! A.href (toValue $ "group/" ++ urlEncode group)
                                      $ toHtml group
 
 

@@ -4,7 +4,7 @@ Install CGroup tools (reboot required)
 
 Dependencies
 
-    cabal install happstack-lite filemanip
+    cabal install happstack-lite filemanip http
 
 sudo cgcreate -t vagrant -g cpu,memory:awesome_group
 
