@@ -9,12 +9,13 @@ import Control.Monad (forM_)
 import Control.Monad.Trans (liftIO)
 import Data.List (isPrefixOf)
 import Data.Monoid (mempty)
-import Happstack.Lite (dir, serve, ServerPart, Response, msum, toResponse, path, ok)
+import Happstack.Lite (dir, nullDir, serve, ServerPart, Response, msum, toResponse, path, ok)
 import Happstack.Server (askRq, rqUri)
 import Network.HTTP.Base (urlEncode)
+import System.FilePath ((</>))
 import Text.Blaze.Html5 (Html, (!), toHtml, toValue)
 
-import Helpers (getGroups)
+import Helpers (getGroups, getTasks)
 
 
 main :: IO ()
@@ -25,10 +26,10 @@ main = do
 
 myApp :: ServerPart Response
 myApp = msum
-  [ dir "groups" $ listGroups
-  , dir "group"  $ showGroup
-  , dir "tasks"  $ listTasks
-  , dir "task"   $ showTask
+  [ dir "groups" $ nullDir >> listGroups
+  , dir "groups" $ showGroup
+  , dir "tasks"  $ nullDir >> listTasks
+  , dir "tasks"  $ showTask
   ]
 
 
@@ -70,7 +71,7 @@ listGroups = do
         H.ul $ forM_ groups groupToLi
     where
         groupToLi :: String -> Html
-        groupToLi group = H.li $ H.a ! A.href (toValue $ "group/" ++ urlEncode group)
+        groupToLi group = H.li $ H.a ! A.href (toValue $ "/groups" </> urlEncode group)
                                      $ toHtml group
 
 
@@ -78,13 +79,15 @@ listGroups = do
 showGroup :: ServerPart Response
 showGroup = do
     rq <- askRq
-    path $ \(name :: String) ->
-        ok $ template (rqUri rq) ("Group " ++ name) $ do
-            H.h1 $ toHtml name
+    path $ \(group :: String) -> do
+        tasks <- liftIO $ getTasks group
+        ok $ template (rqUri rq) ("Group " ++ group) $ do
+            H.h1 $ toHtml group
             H.p $ "Here are tasks in this cgroup:"
-            H.ul $ do
-                H.li $ H.a ! A.href "/task/1234" $ "1234"
-                H.li $ H.a ! A.href "/task/5678" $ "5678"
+            H.ul $ forM_ tasks taskToLi
+    where
+        taskToLi task = H.li $ H.a ! A.href (toValue $ "/tasks" </> task)
+                                   $ toHtml task
 
 
 listTasks :: ServerPart Response

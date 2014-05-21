@@ -1,7 +1,7 @@
 module Helpers where
 
 
-import System.FilePath (takeDirectory, makeRelative)
+import System.FilePath (takeDirectory, makeRelative, (</>))
 import System.FilePath.Find (find, always, fileName, (==?))
 
 
@@ -12,3 +12,8 @@ getGroups :: IO [FilePath]
 getGroups = find always (fileName ==? "tasks") cgroup_mount_point
     >>= return . map takeDirectory
     >>= return . map (makeRelative cgroup_mount_point)
+
+
+getTasks :: String -> IO [String]
+getTasks group = readFile (cgroup_mount_point </> group </> "tasks")
+    >>= return . lines
