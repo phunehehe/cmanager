@@ -9,7 +9,8 @@ import Control.Monad (forM_)
 import Control.Monad.Trans (liftIO)
 import Data.List (isPrefixOf)
 import Data.Monoid (mempty)
-import Happstack.Lite (dir, nullDir, serve, ServerPart, Response, msum, toResponse, path, ok)
+import Happstack.Lite (dir, nullDir, serve, ServerPart, Response, msum,
+                       toResponse, path, ok, notFound)
 import Happstack.Server (askRq, rqUri)
 import Network.HTTP.Base (urlEncode)
 import System.FilePath ((</>))
@@ -80,11 +81,16 @@ showGroup :: ServerPart Response
 showGroup = do
     rq <- askRq
     path $ \(group :: String) -> do
-        tasks <- liftIO $ getTasks group
-        ok $ template (rqUri rq) ("Group " ++ group) $ do
-            H.h1 $ toHtml group
-            H.p $ "Here are tasks in this cgroup:"
-            H.ul $ forM_ tasks taskToLi
+        maybeTasks <- liftIO $ getTasks group
+        case maybeTasks of
+            Just tasks ->
+                ok $ template (rqUri rq) ("Group " ++ group) $ do
+                    H.h1 $ toHtml $ "Group " ++ group
+                    H.p $ "Here are tasks in this cgroup:"
+                    H.ul $ forM_ tasks taskToLi
+            Nothing ->
+                notFound $ template (rqUri rq) "Oh noes!" $ do
+                    H.h1 $ toHtml $ "Group not found: " ++ group
     where
         taskToLi task = H.li $ H.a ! A.href (toValue $ "/tasks" </> task)
                                    $ toHtml task
