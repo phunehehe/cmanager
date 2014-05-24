@@ -20,13 +20,13 @@ getAllGroups = find always (fileName ==? "tasks") cgroup
     >>= return . map (makeRelative cgroup)
 
 
-getTasksOfGroup :: String -> IO (Maybe [String])
+getTasksOfGroup :: String -> IO (Maybe [Integer])
 getTasksOfGroup group = do
     maybeContents <- tryJust (guard . isDoesNotExistError) $
         readFile $ cgroup </> group </> "tasks"
     case maybeContents of
         Left _ -> return Nothing
-        Right contents -> return $ Just $ lines contents
+        Right contents -> return $ Just $ map read $ lines contents
 
 
 getCmdLine :: Integer -> IO (Maybe String)

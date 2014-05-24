@@ -43,11 +43,10 @@ template url title body = H.docTypeHtml ! A.lang "en" $ do
 
 
 groupToLi :: String -> Html
-groupToLi group = H.li $ H.a ! A.href (toValue $ "/groups" </> urlEncode group)
-                             $ toHtml group
+groupToLi group = H.li $
+    H.a ! A.href (toValue $ "/groups" </> urlEncode group) $ toHtml group
 
 
--- TODO: Actually this should be Integer, not String
-taskToLi :: String -> Html
-taskToLi task = H.li $ H.a ! A.href (toValue $ "/tasks" </> task)
-                           $ toHtml task
+taskToLi :: Integer -> Html
+taskToLi pid = H.li $
+    H.a ! A.href (toValue $ "/tasks" </> show pid) $ toHtml pid
