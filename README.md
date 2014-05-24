@@ -6,6 +6,6 @@ Dependencies
 
     cabal install happstack-lite filemanip http split
 
-sudo cgcreate -t vagrant -g cpu,memory:awesome_group
+sudo cgcreate -a vagrant -g cpu,memory:awesome_group
 
 cgexec -g cpu,memory:awesome_group bash

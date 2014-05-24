@@ -7,11 +7,20 @@ import Data.List.Split (splitOn)
 import System.FilePath (takeDirectory, makeRelative, (</>))
 import System.FilePath.Find (find, always, fileName, (==?))
 import System.IO.Error (isDoesNotExistError)
+import System.Directory (doesDirectoryExist)
 
 
 -- XXX: Maybe use </> instead of inlining /
 cgroup = "/sys/fs/cgroup"
 proc = "/proc"
+
+
+groupExists :: String -> IO Bool
+groupExists group = doesDirectoryExist $ cgroup </> group
+
+
+taskExists :: Integer -> IO Bool
+taskExists pid = doesDirectoryExist $ proc </> show pid
 
 
 getAllGroups :: IO [String]
@@ -20,31 +29,20 @@ getAllGroups = find always (fileName ==? "tasks") cgroup
     >>= return . map (makeRelative cgroup)
 
 
-getTasksOfGroup :: String -> IO (Maybe [Integer])
+getTasksOfGroup :: String -> IO [Integer]
 getTasksOfGroup group = do
-    maybeContents <- tryJust (guard . isDoesNotExistError) $
-        readFile $ cgroup </> group </> "tasks"
-    case maybeContents of
-        Left _ -> return Nothing
-        Right contents -> return $ Just $ map read $ lines contents
+    contents <- readFile $ cgroup </> group </> "tasks"
+    return $ map read $ lines contents
 
 
-getCmdLine :: Integer -> IO (Maybe String)
-getCmdLine pid = do
-    maybeCmdLine <- tryJust (guard . isDoesNotExistError) $
-        readFile $ proc </> show pid </> "cmdline"
-    case maybeCmdLine of
-        Left _ -> return Nothing
-        Right cmdLine -> return $ Just cmdLine
+getCmdLine :: Integer -> IO String
+getCmdLine pid = readFile $ proc </> show pid </> "cmdline"
 
 
-getGroupsOfTask :: Integer -> IO (Maybe [String])
+getGroupsOfTask :: Integer -> IO [String]
 getGroupsOfTask pid = do
-    maybeContents <- tryJust (guard . isDoesNotExistError) $
-        readFile $ proc </> show pid </> "cgroup"
-    case maybeContents of
-        Left _ -> return Nothing
-        Right contents -> return $ Just $ map convertOne $ lines contents
+    contents <- readFile $ proc </> show pid </> "cgroup"
+    return $ map convertOne $ lines contents
     where
         -- One line is like this
         -- 4:memory:/awesome_group
