@@ -16,7 +16,7 @@ import Network.HTTP.Base (urlEncode)
 import System.FilePath ((</>))
 import Text.Blaze.Html5 (Html, (!), toHtml, toValue)
 
-import Helpers (getGroups, getTasks, getCmdLine)
+import Helpers (getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask)
 
 
 main :: IO ()
@@ -65,7 +65,7 @@ template url title body = toResponse $
 
 listGroups :: ServerPart Response
 listGroups = do
-    groups <- liftIO getGroups
+    groups <- liftIO getAllGroups
     rq <- askRq
     ok $ template (rqUri rq) "Groups" $ do
         H.h1 $ "Available CGroups"
@@ -80,8 +80,8 @@ showGroup :: ServerPart Response
 showGroup = do
     rq <- askRq
     path $ \(group :: String) -> do
-        -- If maybeTasks returns Nothing chances are the group does not exist
-        maybeTasks <- liftIO $ getTasks group
+        -- If getTasksOfGroup returns Nothing chances are the group does not exist
+        maybeTasks <- liftIO $ getTasksOfGroup group
         case maybeTasks of
             Just tasks ->
                 ok $ template (rqUri rq) ("Group " ++ group) $ do
@@ -113,12 +113,17 @@ showTask = do
     path $ \(pid :: Integer) -> do
         -- If getCmdLine returns Nothing chances are the task does not exist
         maybeCmdLine <- liftIO $ getCmdLine pid
-        case maybeCmdLine of
-            Just cmdLine ->
+        maybeGroups <- liftIO $ getGroupsOfTask pid
+        case (maybeCmdLine, maybeGroups) of
+            (Just cmdLine, Just groups) ->
                 ok $ template (rqUri rq) ("Task " ++ show pid) $ do
                     H.h1 $ toHtml pid
                     H.p $ toHtml cmdLine
-                    H.a ! A.href "/group/amazing_group" $ "amazing_group"
-            Nothing ->
+                    H.ul $ forM_ groups groupToLi
+            (_, _) ->
                 notFound $ template (rqUri rq) "Oh noes!" $ do
                     H.h1 $ toHtml $ "Task not found: " ++ show pid
+    where
+        groupToLi :: String -> Html
+        groupToLi group = H.li $ H.a ! A.href (toValue $ "/groups" </> urlEncode group)
+                                     $ toHtml group
