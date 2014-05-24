@@ -16,7 +16,7 @@ import Network.HTTP.Base (urlEncode)
 import System.FilePath ((</>))
 import Text.Blaze.Html5 (Html, (!), toHtml, toValue)
 
-import Helpers (getGroups, getTasks)
+import Helpers (getGroups, getTasks, getCmdLine)
 
 
 main :: IO ()
@@ -76,11 +76,11 @@ listGroups = do
                                      $ toHtml group
 
 
-
 showGroup :: ServerPart Response
 showGroup = do
     rq <- askRq
     path $ \(group :: String) -> do
+        -- If maybeTasks returns Nothing chances are the group does not exist
         maybeTasks <- liftIO $ getTasks group
         case maybeTasks of
             Just tasks ->
@@ -96,6 +96,7 @@ showGroup = do
                                    $ toHtml task
 
 
+-- TODO: Maybe remove this, it's not that useful
 listTasks :: ServerPart Response
 listTasks = do
     rq <- askRq
@@ -109,8 +110,15 @@ listTasks = do
 showTask :: ServerPart Response
 showTask = do
     rq <- askRq
-    path $ \(pid :: Integer) ->
-        ok $ template (rqUri rq) ("Task " ++ show pid) $ do
-            H.h1 $ toHtml pid
-            H.p $ "TODO: show full command line here"
-            H.a ! A.href "/group/amazing_group" $ "amazing_group"
+    path $ \(pid :: Integer) -> do
+        -- If getCmdLine returns Nothing chances are the task does not exist
+        maybeCmdLine <- liftIO $ getCmdLine pid
+        case maybeCmdLine of
+            Just cmdLine ->
+                ok $ template (rqUri rq) ("Task " ++ show pid) $ do
+                    H.h1 $ toHtml pid
+                    H.p $ toHtml cmdLine
+                    H.a ! A.href "/group/amazing_group" $ "amazing_group"
+            Nothing ->
+                notFound $ template (rqUri rq) "Oh noes!" $ do
+                    H.h1 $ toHtml $ "Task not found: " ++ show pid
