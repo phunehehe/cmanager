@@ -15,6 +15,10 @@ cgroup = "/sys/fs/cgroup"
 proc = "/proc"
 
 
+readInt :: String -> Integer
+readInt = read
+
+
 groupExists :: String -> IO Bool
 groupExists group = doesDirectoryExist $ cgroup </> group
 
@@ -32,6 +36,7 @@ getAllGroups = find always (fileName ==? "tasks") cgroup
 getTasksOfGroup :: String -> IO [Integer]
 getTasksOfGroup group = do
     contents <- readFile $ cgroup </> group </> "tasks"
+    -- This read assumes the file format is correct
     return $ map read $ lines contents
 
 
@@ -48,3 +53,7 @@ getGroupsOfTask pid = do
         -- 4:memory:/awesome_group
         convertOne line = parts!!1 ++ parts!!2
             where parts = splitOn ":" line
+
+
+addTaskToGroup :: Integer -> String -> IO ()
+addTaskToGroup pid group = appendFile (cgroup </> group </> "tasks") (show pid)

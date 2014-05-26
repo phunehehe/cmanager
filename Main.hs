@@ -5,15 +5,18 @@ module Main where
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, guard)
 import Control.Monad.Trans (liftIO)
-import Happstack.Lite (dir, nullDir, serve, ServerPart, Response, msum,
-                       toResponse, path, ok, notFound, method, Method (POST), lookText)
-import Happstack.Server (askRq, rqUri)
-import Text.Blaze.Html5 ((!), toHtml)
-import Control.Monad (guard)
+import Data.Text.Lazy (unpack)
+import Happstack.Lite (
+    dir, nullDir, serve, ServerPart, Response, msum, toResponse, path, ok,
+    notFound, method, Method (POST), lookText)
+import Happstack.Server (askRq, rqUri, rqMethod, matchMethod)
+import Text.Blaze.Html5 ((!), toHtml, Html)
 
-import Helpers (getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask, groupExists, taskExists)
+import Helpers (
+    getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask,
+    groupExists, taskExists, readInt, addTaskToGroup)
 import Templates(template, groupToLi, taskToLi)
 
 
@@ -37,28 +40,46 @@ listGroups = do
     groups <- liftIO getAllGroups
     rq <- askRq
     ok $ toResponse $ template (rqUri rq) "Groups" $ do
-        H.h1 $ "Available CGroups"
+        H.h1 "Available CGroups"
         H.ul $ forM_ groups groupToLi
 
 
---processForm :: ServerPart Response
---processForm =
---    do method POST
---        pid <- lookText "pid"
---        ok $ template "form" $ do
---            H.p "You said:"
---            H.p $ toHtml pid
+processForm :: String -> ServerPart (Maybe Html)
+processForm group = do
+    rq <- askRq
+    if matchMethod POST (rqMethod rq)
+    then do
+        pid <- return . readInt . unpack =<< lookText "pid"
+        liftIO $ addTaskToGroup pid group
+        return $ Just $ do
+            H.div ! A.class_ "alert alert-success alert-dismissable" $ do
+                H.button
+                    ! A.type_ "button"
+                    ! A.class_ "close"
+                    ! H.dataAttribute "dismiss" "alert"
+                    ! H.customAttribute "aria-hidden" "true"
+                    $ "×"
+                "Task "
+                H.strong $ toHtml $ show pid
+                " added to group "
+                H.strong $ toHtml group
+                "!"
+    else return Nothing
 
 
 showGroup :: ServerPart Response
 showGroup = do
     rq <- askRq
     path $ \(group :: String) -> do
-        guard =<< (liftIO $ groupExists group)
+        guard =<< liftIO (groupExists group)
+        maybeResult <- processForm group
         tasks <- liftIO $ getTasksOfGroup group
         ok $ toResponse $ template (rqUri rq) ("Group " ++ group) $ do
+            case maybeResult of
+                Just result -> result
+                Nothing -> return ()
             H.h1 $ toHtml $ "Group " ++ group
-            H.p $ "Here are tasks in this cgroup:"
+            H.p "Here are tasks in this cgroup:"
             H.ul $ forM_ tasks taskToLi
             H.form ! A.method "post" $ do
                 H.label ! A.for "pid" $ "Add a task:"
@@ -71,7 +92,7 @@ listTasks :: ServerPart Response
 listTasks = do
     rq <- askRq
     ok $ toResponse $ template (rqUri rq) "Tasks" $ do
-        H.h1 $ "Available Tasks"
+        H.h1 "Available Tasks"
         H.ul $ do
             H.li $ H.a ! A.href "/task/1234" $ "1234"
             H.li $ H.a ! A.href "/task/5678" $ "5678"
