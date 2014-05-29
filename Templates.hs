@@ -10,6 +10,7 @@ import Data.Monoid (mempty)
 import Network.HTTP.Base (urlEncode)
 import System.FilePath ((</>))
 import Text.Blaze.Html5 (Html, (!), toHtml, toValue)
+import Text.Printf (printf)
 
 import Helpers (getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask)
 
@@ -50,3 +51,16 @@ groupToLi group = H.li $
 taskToLi :: Integer -> Html
 taskToLi pid = H.li $
     H.a ! A.href (toValue $ "/tasks" </> show pid) $ toHtml pid
+
+
+alert :: String -> Html -> Html
+alert type_ message = H.div ! A.class_ (toValue class_) $ do
+    H.button
+        ! A.type_ "button"
+        ! A.class_ "close"
+        ! H.dataAttribute "dismiss" "alert"
+        ! H.customAttribute "aria-hidden" "true"
+        $ "×"
+    message
+    where
+        class_ = printf "alert alert-%s alert-dismissable" type_ :: String

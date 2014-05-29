@@ -5,6 +5,7 @@ module Main where
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
+import Control.Exception (tryJust)
 import Control.Monad (forM_, guard)
 import Control.Monad.Trans (liftIO)
 import Data.Text.Lazy (unpack)
@@ -12,12 +13,13 @@ import Happstack.Lite (
     dir, nullDir, serve, ServerPart, Response, msum, toResponse, path, ok,
     notFound, method, Method (POST), lookText)
 import Happstack.Server (askRq, rqUri, rqMethod, matchMethod)
+import System.IO.Error (isDoesNotExistError)
 import Text.Blaze.Html5 ((!), toHtml, Html)
 
 import Helpers (
     getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask,
     groupExists, taskExists, readInt, addTaskToGroup)
-import Templates(template, groupToLi, taskToLi)
+import Templates(template, groupToLi, taskToLi, alert)
 
 
 main :: IO ()
@@ -50,21 +52,28 @@ processForm group = do
     if matchMethod POST (rqMethod rq)
     then do
         pid <- return . readInt . unpack =<< lookText "pid"
-        liftIO $ addTaskToGroup pid group
-        return $ Just $ do
-            H.div ! A.class_ "alert alert-success alert-dismissable" $ do
-                H.button
-                    ! A.type_ "button"
-                    ! A.class_ "close"
-                    ! H.dataAttribute "dismiss" "alert"
-                    ! H.customAttribute "aria-hidden" "true"
-                    $ "×"
+        maybeContents <- liftIO $ tryJust notExist $ addTaskToGroup pid group
+        case maybeContents of
+            Left message -> return $ Just $ alert "danger" $ do
+                "Something was wrong when adding task "
+                H.strong $ toHtml $ show pid
+                " to group "
+                H.strong $ toHtml group
+                ":"
+                H.br
+                toHtml message
+            Right contents -> return $ Just $ alert "success" $ do
                 "Task "
                 H.strong $ toHtml $ show pid
-                " added to group "
+                " has been added to group "
                 H.strong $ toHtml group
-                "!"
+                "."
     else return Nothing
+    where
+        notExist :: IOError -> Maybe String
+        notExist exception
+            | isDoesNotExistError exception = Just $ show exception
+            | otherwise = Nothing
 
 
 showGroup :: ServerPart Response
