@@ -49,27 +49,31 @@ listGroups = do
 processForm :: String -> ServerPart (Maybe Html)
 processForm group = do
     rq <- askRq
-    if matchMethod POST (rqMethod rq)
+    if matchMethod POST $ rqMethod rq
     then do
         pid <- return . readInt . unpack =<< lookText "pid"
-        maybeContents <- liftIO $ tryJust notExist $ addTaskToGroup pid group
-        case maybeContents of
+        result <- liftIO $ tryJust notExist $ addTaskToGroup pid group
+        case result of
             Left message -> return $ Just $ alert "danger" $ do
                 "Something was wrong when adding task "
-                H.strong $ toHtml $ show pid
+                pidToHtml pid
                 " to group "
-                H.strong $ toHtml group
+                groupToHtml group
                 ":"
                 H.br
                 toHtml message
-            Right contents -> return $ Just $ alert "success" $ do
+            Right _ -> return $ Just $ alert "success" $ do
                 "Task "
-                H.strong $ toHtml $ show pid
+                pidToHtml pid
                 " has been added to group "
-                H.strong $ toHtml group
+                groupToHtml group
                 "."
     else return Nothing
     where
+        groupToHtml :: String -> Html
+        groupToHtml group = H.strong $ toHtml group
+        pidToHtml :: Integer -> Html
+        pidToHtml pid = H.strong $ toHtml pid
         notExist :: IOError -> Maybe String
         notExist exception
             | isDoesNotExistError exception = Just $ show exception
