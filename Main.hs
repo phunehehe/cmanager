@@ -11,7 +11,7 @@ import Control.Monad.Trans (liftIO)
 import Data.Text.Lazy (unpack)
 import Happstack.Lite (
     dir, nullDir, serve, ServerPart, Response, msum, toResponse, path, ok,
-    notFound, method, Method (POST), lookText)
+    Method (POST), lookText)
 import Happstack.Server (askRq, rqUri, rqMethod, matchMethod)
 import System.IO.Error (isDoesNotExistError)
 import Text.Blaze.Html5 ((!), toHtml, Html)
@@ -32,7 +32,6 @@ myApp :: ServerPart Response
 myApp = msum
   [ dir "groups" $ nullDir >> listGroups
   , dir "groups" $ showGroup
-  , dir "tasks"  $ nullDir >> listTasks
   , dir "tasks"  $ showTask
   ]
 
@@ -98,17 +97,6 @@ showGroup = do
                 H.label ! A.for "pid" $ "Add a task:"
                 H.input ! A.type_ "text" ! A.id "pid" ! A.name "pid"
                 H.input ! A.type_ "submit" ! A.value "Do it!"
-
-
--- TODO: Maybe remove this, it's not that useful
-listTasks :: ServerPart Response
-listTasks = do
-    rq <- askRq
-    ok $ toResponse $ template (rqUri rq) "Tasks" $ do
-        H.h1 "Available Tasks"
-        H.ul $ do
-            H.li $ H.a ! A.href "/task/1234" $ "1234"
-            H.li $ H.a ! A.href "/task/5678" $ "5678"
 
 
 showTask :: ServerPart Response
