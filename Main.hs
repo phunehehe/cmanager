@@ -8,13 +8,14 @@ import qualified Text.Blaze.Html5.Attributes as A
 import Control.Exception (tryJust)
 import Control.Monad (forM_, guard)
 import Control.Monad.Trans (liftIO)
+import Data.List ((\\))
 import Data.Text.Lazy (unpack)
 import Happstack.Lite (
     dir, nullDir, serve, ServerPart, Response, msum, toResponse, path, ok,
     Method (POST), lookText)
 import Happstack.Server (askRq, rqUri, rqMethod, matchMethod)
 import System.IO.Error (isDoesNotExistError)
-import Text.Blaze.Html5 ((!), toHtml, Html)
+import Text.Blaze.Html5 ((!), toHtml, toValue, Html)
 
 import Helpers (
     getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask,
@@ -50,7 +51,9 @@ processForm group = do
     rq <- askRq
     if matchMethod POST $ rqMethod rq
     then do
-        pid <- return . readInt . unpack =<< lookText "pid"
+        pidText <- lookText "pid"
+        -- TODO: validate pid
+        let pid = readInt $ unpack pidText
         result <- liftIO $ tryJust notExist $ addTaskToGroup pid group
         case result of
             Left message -> return $ Just $ alert "danger" $ do
@@ -71,8 +74,10 @@ processForm group = do
     where
         groupToHtml :: String -> Html
         groupToHtml group = H.strong $ toHtml group
+
         pidToHtml :: Integer -> Html
         pidToHtml pid = H.strong $ toHtml pid
+
         notExist :: IOError -> Maybe String
         notExist exception
             | isDoesNotExistError exception = Just $ show exception
@@ -105,8 +110,21 @@ showTask = do
     path $ \(pid :: Integer) -> do
         guard =<< (liftIO $ taskExists pid)
         cmdLine <- liftIO $ getCmdLine pid
-        groups <- liftIO $ getGroupsOfTask pid
+        allGroups <- liftIO $ getAllGroups
+        belongingGroups <- liftIO $ getGroupsOfTask pid
         ok $ toResponse $ template (rqUri rq) ("Task " ++ show pid) $ do
             H.h1 $ toHtml pid
             H.p $ toHtml cmdLine
-            H.ul $ forM_ groups groupToLi
+            H.ul $ forM_ belongingGroups groupToLi
+            showForm allGroups belongingGroups
+    where
+        showForm :: [String] -> [String] -> Html
+        showForm allGroups belongingGroups = do
+            H.form ! A.method "post" $ do
+                H.label ! A.for "group" $ "Add to group:"
+                H.select ! A.id "group" ! A.name "group" $ do
+                    forM_ (allGroups \\ belongingGroups) groupToOption
+                H.input ! A.type_ "submit" ! A.value "Do it!"
+
+        groupToOption :: String -> Html
+        groupToOption group = H.option ! A.value (toValue group) $ toHtml group
