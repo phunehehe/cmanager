@@ -9,6 +9,7 @@ import Control.Exception (tryJust)
 import Control.Monad (forM_, guard)
 import Control.Monad.Trans (liftIO)
 import Data.List ((\\))
+import Data.Monoid (mempty)
 import Data.Text.Lazy (unpack)
 import Happstack.Lite (
     dir, nullDir, serve, ServerPart, Response, msum, toResponse, path, ok,
@@ -46,31 +47,24 @@ listGroups = do
         H.ul $ forM_ groups groupToLi
 
 
-processForm :: String -> ServerPart (Maybe Html)
-processForm group = do
-    rq <- askRq
-    if matchMethod POST $ rqMethod rq
-    then do
-        pidText <- lookText "pid"
-        -- TODO: validate pid
-        let pid = readInt $ unpack pidText
-        result <- liftIO $ tryJust notExist $ addTaskToGroup pid group
-        case result of
-            Left message -> return $ Just $ alert "danger" $ do
-                "Something was wrong when adding task "
-                pidToHtml pid
-                " to group "
-                groupToHtml group
-                ":"
-                H.br
-                toHtml message
-            Right _ -> return $ Just $ alert "success" $ do
-                "Task "
-                pidToHtml pid
-                " has been added to group "
-                groupToHtml group
-                "."
-    else return Nothing
+tryAddTaskToGroup :: Integer -> String -> IO Html
+tryAddTaskToGroup pid group = do
+    result <- liftIO $ tryJust notExist $ addTaskToGroup pid group
+    case result of
+        Left message -> return $ alert "danger" $ do
+            "Something was wrong when adding task "
+            pidToHtml pid
+            " to group "
+            groupToHtml group
+            ":"
+            H.br
+            toHtml message
+        Right _ -> return $ alert "success" $ do
+            "Task "
+            pidToHtml pid
+            " has been added to group "
+            groupToHtml group
+            "."
     where
         groupToHtml :: String -> Html
         groupToHtml group = H.strong $ toHtml group
@@ -86,15 +80,19 @@ processForm group = do
 
 showGroup :: ServerPart Response
 showGroup = do
-    rq <- askRq
     path $ \(group :: String) -> do
         guard =<< liftIO (groupExists group)
-        maybeResult <- processForm group
+        rq <- askRq
+        postResult <- if matchMethod POST $ rqMethod rq
+            then do
+                pidText <- lookText "pid"
+                -- TODO: validate pid
+                let pid = readInt $ unpack pidText
+                liftIO $ tryAddTaskToGroup pid group
+            else return mempty
         tasks <- liftIO $ getTasksOfGroup group
         ok $ toResponse $ template (rqUri rq) ("Group " ++ group) $ do
-            case maybeResult of
-                Just result -> result
-                Nothing -> return ()
+            postResult
             H.h1 $ toHtml $ "Group " ++ group
             H.p "Here are tasks in this cgroup:"
             H.ul $ forM_ tasks taskToLi
