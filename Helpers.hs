@@ -41,7 +41,12 @@ getTasksOfGroup group = do
 
 
 getCmdLine :: Integer -> IO String
-getCmdLine pid = readFile $ proc </> show pid </> "cmdline"
+getCmdLine pid = do
+    nullTerminated <- readFile $ proc </> show pid </> "cmdline"
+    return $ map replaceNull nullTerminated
+    where
+        replaceNull '\0' = ' '
+        replaceNull c = c
 
 
 getGroupsOfTask :: Integer -> IO [String]
