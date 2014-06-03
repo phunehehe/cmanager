@@ -27,7 +27,7 @@ template url title body = H.docTypeHtml ! A.lang "en" $ do
             H.div ! A.class_ "navbar-header" $ do
                 H.a ! A.class_ "navbar-brand" ! A.href "#" $ "CGroups"
         H.div ! A.class_ "container-fluid" $ H.div ! A.class_ "row" $ do
-            H.div ! A.class_ "col-sm-3 col-md-2 sidebar" $ do
+            H.div ! A.class_ "col-md-2 sidebar" $ do
                 H.ul ! A.class_ "nav nav-sidebar" $ do
                     maybeActive "/groups" "Groups"
                     maybeActive "/tasks" "Tasks"

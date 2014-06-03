@@ -19,6 +19,7 @@ import Happstack.Server (askRq, rqUri, rqMethod, matchMethod)
 import System.IO (hPutStrLn, stderr)
 import System.IO.Error (tryIOError)
 import Text.Blaze.Html5 ((!), toHtml, toValue, Html)
+import Text.Printf (printf)
 
 import Helpers (
     getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask,
@@ -45,7 +46,7 @@ listGroups = do
     groups <- liftIO getAllGroups
     rq <- askRq
     ok $ toResponse $ template (rqUri rq) "Groups" $ do
-        H.h1 "Available CGroups"
+        H.h1 "All Groups"
         H.ul $ forM_ groups groupToLi
 
 
@@ -95,12 +96,21 @@ showGroup = do
         ok $ toResponse $ template (rqUri rq) ("Group " ++ group) $ do
             postResult
             H.h1 $ toHtml $ "Group " ++ group
-            H.p "Here are tasks in this cgroup:"
-            H.ul $ forM_ tasks taskToLi
-            H.form ! A.method "post" $ do
-                H.label ! A.for "pid" $ "Add a task:"
-                H.input ! A.type_ "text" ! A.id "pid" ! A.name "pid"
-                H.input ! A.type_ "submit" ! A.value "Do it!"
+            H.div ! A.class_ "row" $ do
+                H.div ! A.class_ "col-md-5" $ do
+                    H.p "Here are the tasks in this group:"
+                    H.ul $ forM_ tasks taskToLi
+                H.div ! A.class_ "col-md-5" $ do
+                    H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
+                        H.legend "Add a task to this group"
+                        H.input ! A.name "pid" ! A.type_ "text"
+                            ! A.class_ "form-control"
+                            ! A.placeholder "PID of a running task"
+                        -- FIXME: A silly space is needed otherwise there will be no
+                        -- space in between. Maybe there is a way to tell blaze not to
+                        -- eat all spaces.
+                        " "
+                        H.button ! A.class_ "btn btn-primary" $ "Add"
 
 
 showTask :: ServerPart Response
@@ -120,18 +130,24 @@ showTask = do
         belongingGroups <- liftIO $ getGroupsOfTask pid
         ok $ toResponse $ template (rqUri rq) ("Task " ++ show pid) $ do
             postResult
-            H.h1 $ toHtml pid
-            H.p $ toHtml cmdLine
-            H.ul $ forM_ belongingGroups groupToLi
-            showForm allGroups belongingGroups
+            H.h1 $ toHtml $ (printf "Task %d: %s" pid cmdLine :: String)
+            H.div ! A.class_ "row" $ do
+                H.div ! A.class_ "col-md-5" $ do
+                    H.p "Here are the groups this task belongs to:"
+                    H.ul $ forM_ belongingGroups groupToLi
+                H.div ! A.class_ "col-md-5" $ do
+                    showForm allGroups belongingGroups
     where
         showForm :: [String] -> [String] -> Html
         showForm allGroups belongingGroups = do
-            H.form ! A.method "post" $ do
-                H.label ! A.for "group" $ "Add to group:"
-                H.select ! A.id "group" ! A.name "group" $ do
+            H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
+                H.legend "Add this task to a group"
+                H.select ! A.class_ "form-control"
+                        ! A.id "group" ! A.name "group" $ do
                     forM_ (allGroups \\ belongingGroups) groupToOption
-                H.input ! A.type_ "submit" ! A.value "Do it!"
+                -- XXX: Silly space again
+                " "
+                H.button ! A.class_ "btn btn-primary" $ "Add"
 
         groupToOption :: String -> Html
         groupToOption group = H.option ! A.value (toValue group) $ toHtml group
