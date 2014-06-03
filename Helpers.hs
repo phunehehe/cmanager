@@ -61,4 +61,8 @@ getGroupsOfTask pid = do
 
 
 addTaskToGroup :: Integer -> String -> IO ()
-addTaskToGroup pid group = appendFile (cgroup </> group </> "tasks") (show pid)
+addTaskToGroup pid group = do
+    exist <- groupExists group
+    if exist
+        then appendFile (cgroup </> group </> "tasks") (show pid)
+        else fail "No such group"

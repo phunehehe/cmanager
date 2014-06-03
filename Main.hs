@@ -6,6 +6,8 @@ import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
 import Control.Exception (tryJust)
+-- XXX: This is said to be unportable
+import GHC.IO.Exception (IOException (IOError))
 import Control.Monad (forM_, guard)
 import Control.Monad.Trans (liftIO)
 import Data.List ((\\))
@@ -15,6 +17,7 @@ import Happstack.Lite (
     dir, nullDir, serve, ServerPart, Response, msum, toResponse, path, ok,
     Method (POST), lookText)
 import Happstack.Server (askRq, rqUri, rqMethod, matchMethod)
+import System.IO (hPutStrLn, stderr)
 import System.IO.Error (isDoesNotExistError)
 import Text.Blaze.Html5 ((!), toHtml, toValue, Html)
 
@@ -49,16 +52,17 @@ listGroups = do
 
 tryAddTaskToGroup :: Integer -> String -> IO Html
 tryAddTaskToGroup pid group = do
-    result <- liftIO $ tryJust notExist $ addTaskToGroup pid group
+    result <- liftIO $ tryJust ioErrors $ addTaskToGroup pid group
     case result of
-        Left message -> return $ alert "danger" $ do
-            "Something was wrong when adding task "
-            pidToHtml pid
-            " to group "
-            groupToHtml group
-            ":"
-            H.br
-            toHtml message
+        Left error -> do
+            hPutStrLn stderr $ show error
+            return $ alert "danger" $ do
+                "Something was wrong when adding task "
+                pidToHtml pid
+                " to group "
+                groupToHtml group
+                ":"
+                H.ul $ H.li $ userMessage error
         Right _ -> return $ alert "success" $ do
             "Task "
             pidToHtml pid
@@ -72,10 +76,12 @@ tryAddTaskToGroup pid group = do
         pidToHtml :: Integer -> Html
         pidToHtml pid = H.strong $ toHtml pid
 
-        notExist :: IOError -> Maybe String
-        notExist exception
-            | isDoesNotExistError exception = Just $ show exception
-            | otherwise = Nothing
+        -- XXX: Maybe use tryIOError instead
+        ioErrors :: IOError -> Maybe IOError
+        ioErrors exception = Just exception
+
+        userMessage :: IOError -> Html
+        userMessage (IOError hdl iot loc s _ fn) = toHtml s
 
 
 showGroup :: ServerPart Response
@@ -104,13 +110,21 @@ showGroup = do
 
 showTask :: ServerPart Response
 showTask = do
-    rq <- askRq
     path $ \(pid :: Integer) -> do
         guard =<< (liftIO $ taskExists pid)
+        rq <- askRq
+        postResult <- if matchMethod POST $ rqMethod rq
+            then do
+                groupText <- lookText "group"
+                -- TODO: validate group
+                let group = unpack groupText
+                liftIO $ tryAddTaskToGroup pid group
+            else return mempty
         cmdLine <- liftIO $ getCmdLine pid
         allGroups <- liftIO $ getAllGroups
         belongingGroups <- liftIO $ getGroupsOfTask pid
         ok $ toResponse $ template (rqUri rq) ("Task " ++ show pid) $ do
+            postResult
             H.h1 $ toHtml pid
             H.p $ toHtml cmdLine
             H.ul $ forM_ belongingGroups groupToLi
