@@ -5,7 +5,6 @@ module Main where
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
-import Control.Exception (tryJust)
 -- XXX: This is said to be unportable
 import GHC.IO.Exception (IOException (IOError))
 import Control.Monad (forM_, guard)
@@ -18,7 +17,7 @@ import Happstack.Lite (
     Method (POST), lookText)
 import Happstack.Server (askRq, rqUri, rqMethod, matchMethod)
 import System.IO (hPutStrLn, stderr)
-import System.IO.Error (isDoesNotExistError)
+import System.IO.Error (tryIOError)
 import Text.Blaze.Html5 ((!), toHtml, toValue, Html)
 
 import Helpers (
@@ -52,7 +51,7 @@ listGroups = do
 
 tryAddTaskToGroup :: Integer -> String -> IO Html
 tryAddTaskToGroup pid group = do
-    result <- liftIO $ tryJust ioErrors $ addTaskToGroup pid group
+    result <- liftIO $ tryIOError $ addTaskToGroup pid group
     case result of
         Left error -> do
             hPutStrLn stderr $ show error
@@ -76,12 +75,8 @@ tryAddTaskToGroup pid group = do
         pidToHtml :: Integer -> Html
         pidToHtml pid = H.strong $ toHtml pid
 
-        -- XXX: Maybe use tryIOError instead
-        ioErrors :: IOError -> Maybe IOError
-        ioErrors exception = Just exception
-
         userMessage :: IOError -> Html
-        userMessage (IOError hdl iot loc s _ fn) = toHtml s
+        userMessage (IOError _ _ _ description _ _) = toHtml description
 
 
 showGroup :: ServerPart Response
