@@ -30,6 +30,7 @@ template url title body = H.docTypeHtml ! A.lang "en" $ do
             H.div ! A.class_ "col-md-2 sidebar" $ do
                 H.ul ! A.class_ "nav nav-sidebar" $ do
                     maybeActive "/groups" "Groups"
+                    -- FIXME: broken link
                     maybeActive "/tasks" "Tasks"
             H.div ! A.class_ "col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main" $ do
                 body

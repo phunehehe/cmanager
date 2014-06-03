@@ -27,6 +27,7 @@ taskExists :: Integer -> IO Bool
 taskExists pid = doesDirectoryExist $ proc </> show pid
 
 
+-- XXX: Maybe checking directory is better
 getAllGroups :: IO [String]
 getAllGroups = find always (fileName ==? "tasks") cgroup
     >>= return . map takeDirectory

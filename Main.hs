@@ -44,15 +44,15 @@ myApp = msum
 listGroups :: ServerPart Response
 listGroups = do
     groups <- liftIO getAllGroups
-    rq <- askRq
-    ok $ toResponse $ template (rqUri rq) "Groups" $ do
+    uri <- return . rqUri =<< askRq
+    ok $ toResponse $ template uri "Groups" $ do
         H.h1 "All Groups"
         H.ul $ forM_ groups groupToLi
 
 
 tryAddTaskToGroup :: Integer -> String -> IO Html
 tryAddTaskToGroup pid group = do
-    result <- liftIO $ tryIOError $ addTaskToGroup pid group
+    result <- tryIOError $ addTaskToGroup pid group
     case result of
         Left error -> do
             hPutStrLn stderr $ show error
@@ -121,7 +121,6 @@ showTask = do
         postResult <- if matchMethod POST $ rqMethod rq
             then do
                 groupText <- lookText "group"
-                -- TODO: validate group
                 let group = unpack groupText
                 liftIO $ tryAddTaskToGroup pid group
             else return mempty
