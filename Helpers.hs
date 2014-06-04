@@ -15,10 +15,6 @@ cgroup = "/sys/fs/cgroup"
 proc = "/proc"
 
 
-readInt :: String -> Integer
-readInt = read
-
-
 groupExists :: String -> IO Bool
 groupExists group = doesDirectoryExist $ cgroup </> group
 

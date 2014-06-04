@@ -23,7 +23,7 @@ import Text.Printf (printf)
 
 import Helpers (
     getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask,
-    groupExists, taskExists, readInt, addTaskToGroup)
+    groupExists, taskExists, addTaskToGroup)
 import Templates(template, groupToLi, taskToLi, alert)
 
 
@@ -88,9 +88,9 @@ showGroup = do
         postResult <- if matchMethod POST $ rqMethod rq
             then do
                 pidText <- lookText "pid"
-                -- TODO: validate pid
-                let pid = readInt $ unpack pidText
-                liftIO $ tryAddTaskToGroup pid group
+                case reads $ unpack pidText :: [(Integer, String)] of
+                    [(pid, "")] -> liftIO $ tryAddTaskToGroup pid group
+                    _ -> return $ alert "danger" "The provided PID is not valid."
             else return mempty
         tasks <- liftIO $ getTasksOfGroup group
         ok $ toResponse $ template (rqUri rq) ("Group " ++ group) $ do
