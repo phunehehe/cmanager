@@ -5,8 +5,7 @@
 cabal.mkDerivation (self: {
   pname = "cgroups-manager";
   version = "0.1.0.0";
-  src = "/cgroups/cgroups-manager.tar.gz";
-  sha256 = "09817266e54a74dfcc07289204efce4bd87f575744355e4447adc7e6890805f7";
+  src = "/cgroups";
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
