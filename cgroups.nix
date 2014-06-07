@@ -1,27 +1,20 @@
-{ config, pkgs, ... }:
+{ lib, pkgs, ... }:
 
-{
-    environment.systemPackages = with pkgs; [
+let
+    cgroupsManager = pkgs.lib.callPackageWith pkgs.haskellPackages /cgroups/package.nix {};
 
-        haskellPackages.cabalInstall
-        haskellPackages.ghc
+in {
 
-        haskellPackages.happstackLite
-        haskellPackages.filemanip
-        haskellPackages.split
-        haskellPackages.HTTP
-        haskellPackages.text
-    ];
+    nixpkgs.config.allowUnfree = true;
+    environment.systemPackages = [ cgroupsManager ];
 
-
-    systemd.services.cgroups-manager =
-        let site_dir = "/cgroups";
-        in {
+    systemd.services.cgroups-manager = {
         description = "CGroups Manager";
         wantedBy = [ "multi-user.target" ];
         after = [ "network.target" ];
+        path = [ cgroupsManager ];
         serviceConfig = {
-            ExecStart = "${site_dir}/dist/build/cgroups-manager/cgroups-manager";
+            ExecStart = "${cgroupsManager}/bin/cgroups-manager";
             Restart = "always";
         };
     };
