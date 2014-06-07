@@ -3,11 +3,6 @@
 {
     environment.systemPackages = with pkgs; [
 
-        binutils
-        gcc
-        zlib
-
-        haskellPackages.cabal2nix
         haskellPackages.cabalInstall
         haskellPackages.ghc
 
