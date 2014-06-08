@@ -129,7 +129,8 @@ showTask = do
         belongingGroups <- liftIO $ getGroupsOfTask pid
         ok $ toResponse $ template (rqUri rq) ("Task " ++ show pid) $ do
             postResult
-            H.h1 $ toHtml $ (printf "Task %d: %s" pid cmdLine :: String)
+            H.h1 $ toHtml $ (printf "Task %d" pid :: String)
+            H.pre ! A.class_ "pre-scrollable" $ toHtml cmdLine
             H.div ! A.class_ "row" $ do
                 H.div ! A.class_ "col-md-6" $ do
                     H.p "Here are the groups this task belongs to:"
