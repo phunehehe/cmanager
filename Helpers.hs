@@ -53,8 +53,15 @@ getGroupsOfTask pid = do
     where
         -- One line is like this
         -- 4:memory:/awesome_group
-        convertOne line = parts!!1 ++ parts!!2
-            where parts = splitOn ":" line
+        convertOne line
+            | path == "/" = hier
+            | otherwise = hier ++ path
+            where
+                _:tempHier:path:[] = splitOn ":" line
+                hier = realHier tempHier
+        -- Sometimes the line is like this for no documented reason
+        -- 2:name=systemd:/user.slice/user-1000.slice/session-4.scope
+        realHier tempHier = last $ splitOn "=" tempHier
 
 
 addTaskToGroup :: Integer -> String -> IO ()
