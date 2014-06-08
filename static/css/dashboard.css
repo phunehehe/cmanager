@@ -95,3 +95,9 @@ body {
   display: inline-block;
   border-radius: 50%;
 }
+
+
+.form-inline input[name=pid],
+.form-inline select[name=group] {
+    width: 400px;
+}

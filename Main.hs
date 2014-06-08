@@ -97,10 +97,10 @@ showGroup = do
             postResult
             H.h1 $ toHtml $ "Group " ++ group
             H.div ! A.class_ "row" $ do
-                H.div ! A.class_ "col-md-5" $ do
+                H.div ! A.class_ "col-md-6" $ do
                     H.p "Here are the tasks in this group:"
                     H.ul $ forM_ tasks taskToLi
-                H.div ! A.class_ "col-md-5" $ do
+                H.div ! A.class_ "col-md-6" $ do
                     H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
                         H.legend "Add a task to this group"
                         H.input ! A.name "pid" ! A.type_ "text"
@@ -131,10 +131,10 @@ showTask = do
             postResult
             H.h1 $ toHtml $ (printf "Task %d: %s" pid cmdLine :: String)
             H.div ! A.class_ "row" $ do
-                H.div ! A.class_ "col-md-5" $ do
+                H.div ! A.class_ "col-md-6" $ do
                     H.p "Here are the groups this task belongs to:"
                     H.ul $ forM_ belongingGroups groupToLi
-                H.div ! A.class_ "col-md-5" $ do
+                H.div ! A.class_ "col-md-6" $ do
                     showForm allGroups belongingGroups
     where
         showForm :: [String] -> [String] -> Html
@@ -143,7 +143,7 @@ showTask = do
                 H.legend "Add this task to a group"
                 H.select ! A.class_ "form-control chosen-select"
                         ! H.dataAttribute "placeholder" "Choose a Group..."
-                        ! A.id "group" ! A.name "group" $ do
+                        ! A.name "group" $ do
                     groupToOption ""
                     forM_ (allGroups \\ belongingGroups) groupToOption
                 -- XXX: Silly space again
