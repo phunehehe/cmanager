@@ -1,11 +1,11 @@
 { cabal, blazeHtml, filemanip, filepath, happstackLite
-, happstackServer, HTTP, mtl, split, text
+, happstackServer, HTTP, mtl, split, text, config
 }:
 
 cabal.mkDerivation (self: {
   pname = "cgroups-manager";
   version = "0.1.0.0";
-  src = "/cgroups";
+  src = "${config.cgroupsManager.siteDir}";
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
