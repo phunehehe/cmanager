@@ -141,8 +141,10 @@ showTask = do
         showForm allGroups belongingGroups = do
             H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
                 H.legend "Add this task to a group"
-                H.select ! A.class_ "form-control"
+                H.select ! A.class_ "form-control chosen-select"
+                        ! H.dataAttribute "placeholder" "Choose a Group..."
                         ! A.id "group" ! A.name "group" $ do
+                    groupToOption ""
                     forM_ (allGroups \\ belongingGroups) groupToOption
                 -- XXX: Silly space again
                 " "

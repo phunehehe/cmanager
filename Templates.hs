@@ -21,6 +21,8 @@ template url title body = H.docTypeHtml ! A.lang "en" $ do
         H.meta ! A.charset "utf-8"
         H.title $ toHtml title
         H.link ! A.href "/css/bootstrap.min.css" ! A.rel "stylesheet"
+        H.link ! A.href "/css/chosen.min.css" ! A.rel "stylesheet"
+        H.link ! A.href "/css/chosen-bootstrap.css" ! A.rel "stylesheet"
         H.link ! A.href "/css/dashboard.css" ! A.rel "stylesheet"
     H.body $ do
         H.div ! A.class_ "navbar navbar-inverse navbar-fixed-top" $ H.div ! A.class_ "container-fluid" $ do
@@ -36,6 +38,8 @@ template url title body = H.docTypeHtml ! A.lang "en" $ do
                 body
         H.script ! A.src "/js/jquery.min.js" $ mempty
         H.script ! A.src "/js/bootstrap.min.js" $ mempty
+        H.script ! A.src "/js/chosen.jquery.min.js" $ mempty
+        H.script ! A.src "/js/cgroups.js" $ mempty
     where
         maybeActive :: String -> String -> Html
         maybeActive targetUrl text
