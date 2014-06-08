@@ -55,6 +55,7 @@ executable cgroups-manager
   -- Other library packages from which modules are imported.
   build-depends:
       HTTP             >=4000.2,
+      aeson            >=0.7,
       base             >=4.5,
       blaze-html       >=0.7,
       directory        >=1.1,
