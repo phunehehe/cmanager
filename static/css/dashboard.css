@@ -101,3 +101,7 @@ body {
 .form-inline select[name=group] {
     width: 400px;
 }
+
+.pre-scrollable {
+  overflow-y: auto;
+}
