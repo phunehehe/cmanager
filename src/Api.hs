@@ -2,21 +2,28 @@
 module Api where
 
 
-import Control.Monad (guard)
+import Control.Exception (tryJust)
 import Control.Monad.Trans (liftIO)
-import Happstack.Lite (ServerPart, Response, toResponse, path, ok, lookText)
 import Data.Aeson (object, (.=), ToJSON, encode, toJSON)
 import Data.Text.Lazy (unpack)
-import System.IO.Error (tryIOError)
 import GHC.Generics (Generic)
-import Control.Exception (try, tryJust)
+import Happstack.Lite (ServerPart, Response, toResponse, path, ok, lookText)
 
 import qualified Helpers as H
+
+
+data Error = Error {
+    code :: String,
+    message :: String
+} deriving Generic
+
+instance ToJSON Error
 
 
 data ApiResponse a where
     SuccessApiResponse :: ToJSON a => Maybe a -> ApiResponse a
     FailureApiResponse :: Error -> ApiResponse a
+
 instance ToJSON (ApiResponse a) where
     toJSON (SuccessApiResponse maybeData) = object $ ["success" .= True] ++ d
         where
@@ -25,65 +32,55 @@ instance ToJSON (ApiResponse a) where
                 Nothing -> []
     toJSON (FailureApiResponse error) = object ["success" .= False, "error" .= error]
 
-data Error = Error {
-    code :: String,
-    message :: String
-} deriving Generic
-instance ToJSON Error
 
 -- A Nothing that is an instance of ToJSON
 nothing = Nothing :: Maybe ()
 
 
+handle :: ToJSON a => Either Error a -> ApiResponse a
+handle maybeResult = case maybeResult of
+    Left error -> FailureApiResponse $ error
+    Right result -> SuccessApiResponse $ Just result
+
+
+toError :: H.MyException -> Error
+toError H.NoSuchGroup  = Error "NoSuchGroup"  "The specified group does not exist."
+toError H.NoSuchTask   = Error "NoSuchTask"   "The specified task does not exist."
+toError H.UnknownError = Error "UnknownError" "Check the log for more details."
+
+
+respondJSON :: ToJSON a => a -> ServerPart Response
+respondJSON = ok . toResponse . encode
+
+
+omniTry :: ToJSON a => [H.MyException] -> IO a -> ServerPart Response
+omniTry exceptions f = do
+    result <- liftIO $ tryJust myException $ f
+    respondJSON $ handle result
+    where
+        myException exception
+            | elem exception exceptions = Just $ toError exception
+            | otherwise = Nothing
+
+
 listGroups :: ServerPart Response
 listGroups = do
     groups <- liftIO H.getAllGroups
-    ok $ toResponse $ encode $ SuccessApiResponse $ Just groups
+    respondJSON $ SuccessApiResponse $ Just groups
 
 
 showGroup :: ServerPart Response
-showGroup = do
-    path $ \(group :: String) -> do
-        result <- liftIO $ tryJust myException $ H.getTasksOfGroup2 group
-        ok $ toResponse $ encode $ handle result
-    where
-        -- TODO: centralize this mapping
-        myException H.NoSuchGroup = Just ("NoSuchGroup", "The specified group does not exist.")
-        myException _ = Nothing
-        handle result = case result of
-            Left (code, message) -> FailureApiResponse $ Error code message
-            Right tasks -> SuccessApiResponse $ Just tasks
+showGroup = path $ \(group :: String) -> omniTry [H.NoSuchGroup] $ H.getTasksOfGroup2 group
 
 
 showTask :: ServerPart Response
-showTask = do
-    path $ \(pid :: Integer) -> do
-        result <- liftIO $ tryJust myException $ H.getTask pid
-        ok $ toResponse $ encode $ handle result
-    where
-        -- TODO: centralize this mapping
-        myException H.NoSuchTask = Just ("NoSuchTask", "The specified task does not exist.")
-        myException _ = Nothing
-        handle result = case result of
-            Left (code, message) -> FailureApiResponse $ Error code message
-            Right task -> SuccessApiResponse $ Just task
+showTask = path $ \(pid :: Integer) -> omniTry [H.NoSuchTask] $ H.getTask pid
 
 
 addTaskToGroup :: ServerPart Response
-addTaskToGroup = do
-    path $ \(group :: String) -> do
-        pidText <- lookText "pid"
-        case reads $ unpack pidText :: [(Integer, String)] of
-            [(pid, "")] -> do
-                result <- liftIO $ tryJust myException $ H.addTaskToGroup pid group
-                ok $ toResponse $ encode $ handle result
-            _ -> ok $ toResponse $ encode $ FailureApiResponse $ Error "" "The provided PID is not valid."
-    where
-        -- TODO: centralize this mapping
-        myException H.NoSuchGroup = Just ("NoSuchGroup", "The specified group does not exist.")
-        myException H.NoSuchTask = Just ("NoSuchTask", "The specified task does not exist.")
-        myException H.UnknownError = Just ("UnknownError", "Check the log for more details.")
-        -- TODO: make this DRY
-        handle result = case result of
-            Left (code, message) -> FailureApiResponse $ Error code message
-            Right _ -> SuccessApiResponse nothing
+addTaskToGroup = path $ \(group :: String) -> do
+    pidText <- lookText "pid"
+    case reads $ unpack pidText :: [(Integer, String)] of
+        [(pid, "")] -> do
+            omniTry [H.NoSuchGroup, H.NoSuchTask, H.UnknownError] $ H.addTaskToGroup pid group
+        _ -> respondJSON $ FailureApiResponse $ toError H.NoSuchTask

@@ -32,7 +32,7 @@ data Task = Task {
 instance ToJSON Task
 
 data MyException = NoSuchGroup | NoSuchTask | UnknownError
-    deriving (Show, Typeable)
+    deriving (Show, Typeable, Eq)
 instance Exception MyException
 
 
@@ -115,20 +115,20 @@ getGroupsOfTask pid = do
         realHier tempHier = last $ splitOn "=" tempHier
 
 
-addTaskToGroup :: Integer -> String -> IO ()
+addTaskToGroup :: Integer -> String -> IO (Maybe ())
 addTaskToGroup pid group = do
     -- Assuming groups and tasks don't disappear during the whole time
     exist <- taskExists pid
     if not exist
         then throw NoSuchTask
-        else return ()
+        else return Nothing
     exist <- groupExists group
     if not exist
         then throw NoSuchGroup
-        else return ()
+        else return Nothing
     result <- tryIOError $ appendFile (cgroup </> group </> "tasks") (show pid)
     case result of
         Left exception -> do
             Helpers.log $ show exception
             throw UnknownError
-        Right _ -> return ()
+        Right _ -> return Nothing
