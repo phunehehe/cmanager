@@ -1,10 +1,10 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable #-}
 module Helpers where
 
 
 -- XXX: This is said to be unportable
 import GHC.IO.Exception (IOException (IOError))
-import Control.Exception (tryJust)
+import Control.Exception (tryJust, throw, Exception)
 import Control.Monad (guard)
 import Data.Aeson (object, (.=), ToJSON, toJSON)
 import Data.List.Split (splitOn)
@@ -12,8 +12,9 @@ import GHC.Generics (Generic)
 import System.Directory (doesDirectoryExist)
 import System.FilePath (takeDirectory, makeRelative, (</>))
 import System.FilePath.Find (find, always, fileName, (==?))
-import System.IO.Error (isDoesNotExistError)
+import System.IO.Error (tryIOError, isDoesNotExistError)
 import System.IO (hPutStrLn, stderr)
+import Data.Typeable (Typeable)
 
 
 -- XXX: Maybe use </> instead of inlining /
@@ -29,6 +30,10 @@ data Task = Task {
     groups :: [Group]
 } deriving Generic
 instance ToJSON Task
+
+data MyException = NoSuchGroup | NoSuchTask | UnknownError
+    deriving (Show, Typeable)
+instance Exception MyException
 
 
 userMessage :: IOError -> String
@@ -57,16 +62,23 @@ getAllGroups = find always (fileName ==? "tasks") cgroup
 -- TODO: merge with getTasksOfGroup
 getTasksOfGroup2 :: String -> IO [Task]
 getTasksOfGroup2 group = do
-    contents <- readFile $ cgroup </> group </> "tasks"
-    -- This read assumes the file format is correct
-    mapM (getTask . read) $ lines contents
+    exist <- groupExists group
+    if exist
+        then do
+            contents <- readFile $ cgroup </> group </> "tasks"
+            mapM (getTask . read) $ lines contents
+        else fail "No such group"
 
 
 getTask :: Integer -> IO Task
 getTask pid = do
-    cmdLine <- getCmdLine pid
-    groups <- getGroupsOfTask pid
-    return $ Task {pid=pid, cmdLine=cmdLine, groups=groups}
+    exist <- taskExists pid
+    if exist
+        then do
+            cmdLine <- getCmdLine pid
+            groups <- getGroupsOfTask pid
+            return $ Task {pid=pid, cmdLine=cmdLine, groups=groups}
+        else throw NoSuchTask
 
 
 getTasksOfGroup :: String -> IO [Integer]
@@ -105,7 +117,18 @@ getGroupsOfTask pid = do
 
 addTaskToGroup :: Integer -> String -> IO ()
 addTaskToGroup pid group = do
+    -- Assuming groups and tasks don't disappear during the whole time
+    exist <- taskExists pid
+    if not exist
+        then throw NoSuchTask
+        else return ()
     exist <- groupExists group
-    if exist
-        then appendFile (cgroup </> group </> "tasks") (show pid)
-        else fail "No such group"
+    if not exist
+        then throw NoSuchGroup
+        else return ()
+    result <- tryIOError $ appendFile (cgroup </> group </> "tasks") (show pid)
+    case result of
+        Left exception -> do
+            Helpers.log $ show exception
+            throw UnknownError
+        Right _ -> return ()
