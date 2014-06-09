@@ -5,8 +5,6 @@ module Web where
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
--- XXX: This is said to be unportable
-import GHC.IO.Exception (IOException (IOError))
 import Control.Monad (forM_, guard)
 import Control.Monad.Trans (liftIO)
 import Data.List ((\\))
@@ -22,7 +20,7 @@ import Text.Printf (printf)
 
 import Helpers (
     getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask,
-    groupExists, taskExists, addTaskToGroup)
+    groupExists, taskExists, addTaskToGroup, log, userMessage)
 import Templates(template, groupToLi, taskToLi, alert)
 
 
@@ -40,14 +38,14 @@ tryAddTaskToGroup pid group = do
     result <- tryIOError $ addTaskToGroup pid group
     case result of
         Left error -> do
-            hPutStrLn stderr $ show error
+            Helpers.log $ show error
             return $ alert "danger" $ do
                 "Something was wrong when adding task "
                 pidToHtml pid
                 " to group "
                 groupToHtml group
                 ":"
-                H.ul $ H.li $ userMessage error
+                H.ul $ H.li $ toHtml $ userMessage error
         Right _ -> return $ alert "success" $ do
             "Task "
             pidToHtml pid
@@ -60,9 +58,6 @@ tryAddTaskToGroup pid group = do
 
         pidToHtml :: Integer -> Html
         pidToHtml pid = H.strong $ toHtml pid
-
-        userMessage :: IOError -> Html
-        userMessage (IOError _ _ _ description _ _) = toHtml description
 
 
 showGroup :: ServerPart Response

@@ -2,6 +2,8 @@
 module Helpers where
 
 
+-- XXX: This is said to be unportable
+import GHC.IO.Exception (IOException (IOError))
 import Control.Exception (tryJust)
 import Control.Monad (guard)
 import Data.Aeson (object, (.=), ToJSON, toJSON)
@@ -11,6 +13,7 @@ import System.Directory (doesDirectoryExist)
 import System.FilePath (takeDirectory, makeRelative, (</>))
 import System.FilePath.Find (find, always, fileName, (==?))
 import System.IO.Error (isDoesNotExistError)
+import System.IO (hPutStrLn, stderr)
 
 
 -- XXX: Maybe use </> instead of inlining /
@@ -26,6 +29,14 @@ data Task = Task {
     groups :: [Group]
 } deriving Generic
 instance ToJSON Task
+
+
+userMessage :: IOError -> String
+userMessage (IOError _ _ _ description _ _) = description
+
+
+log :: String -> IO ()
+log message = hPutStrLn stderr $ message
 
 
 groupExists :: String -> IO Bool
