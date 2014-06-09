@@ -59,15 +59,14 @@ getAllGroups = find always (fileName ==? "tasks") cgroup
     >>= return . map (makeRelative cgroup)
 
 
--- TODO: merge with getTasksOfGroup
-getTasksOfGroup2 :: String -> IO [Task]
-getTasksOfGroup2 group = do
+getTasksOfGroup :: String -> IO [Task]
+getTasksOfGroup group = do
     exist <- groupExists group
     if exist
         then do
             contents <- readFile $ cgroup </> group </> "tasks"
             mapM (getTask . read) $ lines contents
-        else fail "No such group"
+        else throw NoSuchGroup
 
 
 getTask :: Integer -> IO Task
@@ -79,13 +78,6 @@ getTask pid = do
             groups <- getGroupsOfTask pid
             return $ Task {pid=pid, cmdLine=cmdLine, groups=groups}
         else throw NoSuchTask
-
-
-getTasksOfGroup :: String -> IO [Integer]
-getTasksOfGroup group = do
-    contents <- readFile $ cgroup </> group </> "tasks"
-    -- This read assumes the file format is correct
-    return $ map read $ lines contents
 
 
 getCmdLine :: Integer -> IO String

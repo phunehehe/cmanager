@@ -12,7 +12,7 @@ import System.FilePath ((</>))
 import Text.Blaze.Html5 (Html, (!), toHtml, toValue)
 import Text.Printf (printf)
 
-import Helpers (getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask)
+import qualified Helpers
 
 
 template :: String -> String -> Html -> Html
@@ -53,9 +53,10 @@ groupToLi group = H.li $
     H.a ! A.href (toValue $ "/groups" </> urlEncode group) $ toHtml group
 
 
-taskToLi :: Integer -> Html
-taskToLi pid = H.li $
-    H.a ! A.href (toValue $ "/tasks" </> show pid) $ toHtml pid
+taskToLi :: Helpers.Task -> Html
+taskToLi task =
+    H.li $ H.a ! A.href (toValue $ "/tasks" </> show pid) $ toHtml pid
+    where pid = Helpers.pid task
 
 
 alert :: String -> Html -> Html

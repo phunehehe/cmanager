@@ -70,7 +70,7 @@ listGroups = do
 
 
 showGroup :: ServerPart Response
-showGroup = path $ \(group :: String) -> omniTry [H.NoSuchGroup] $ H.getTasksOfGroup2 group
+showGroup = path $ \(group :: String) -> omniTry [H.NoSuchGroup] $ H.getTasksOfGroup group
 
 
 showTask :: ServerPart Response
