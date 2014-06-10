@@ -2,134 +2,64 @@
 module Web where
 
 
-import qualified Text.Blaze.Html5 as H
-import qualified Text.Blaze.Html5.Attributes as A
-
-import Control.Monad (forM_, guard)
+import Control.Exception (tryJust)
 import Control.Monad.Trans (liftIO)
-import Data.List ((\\))
-import Data.Monoid (mempty)
 import Data.Text.Lazy (unpack)
-import Happstack.Lite (
-    ServerPart, Response, msum, toResponse, path, ok, Method (POST), lookText)
-import Happstack.Server (askRq, rqUri, rqMethod, matchMethod)
-import System.IO (hPutStrLn, stderr)
-import System.IO.Error (tryIOError)
-import Text.Blaze.Html5 ((!), toHtml, toValue, Html)
-import Text.Printf (printf)
+import Happstack.Lite (ServerPart, Response, toResponse, path, ok, lookText)
+import Text.Blaze.Html5 (Html)
 
-import Helpers (
-    getAllGroups, getTasksOfGroup, getCmdLine, getGroupsOfTask,
-    groupExists, taskExists, addTaskToGroup, log, userMessage)
-import Templates(template, groupToLi, taskToLi, alert)
+import qualified Helpers as H
+import qualified Templates as T
 
 
 listGroups :: ServerPart Response
 listGroups = do
-    groups <- liftIO getAllGroups
-    uri <- return . rqUri =<< askRq
-    ok $ toResponse $ template uri "Groups" $ do
-        H.h1 "All Groups"
-        H.ul $ forM_ groups groupToLi
+    groups <- liftIO H.getAllGroups
+    ok $ toResponse $ T.listGroupTemplate groups
 
 
-tryAddTaskToGroup :: Integer -> String -> IO Html
-tryAddTaskToGroup pid group = do
-    result <- tryIOError $ addTaskToGroup pid group
+shimGroup :: ServerPart (Maybe Html)
+shimGroup = do
+    path $ \(group :: H.Group) -> do
+        pidText <- lookText "pid"
+        case reads $ unpack pidText :: [(H.Pid, String)] of
+            [(pid, "")] -> return . Just =<< addTaskToGroup pid group
+            _ -> return $ Just $ T.failureTemplate pidText group $ H.toError H.NoSuchTask
+
+
+shimTask :: ServerPart (Maybe Html)
+shimTask = do
+    path $ \(pid :: H.Pid) -> do
+        groupText <- lookText "group"
+        return . Just =<< (addTaskToGroup pid $ unpack groupText)
+
+
+addTaskToGroup :: H.Pid -> H.Group -> ServerPart Html
+addTaskToGroup pid group = do
+    result <- liftIO $ tryJust myException $ H.addTaskToGroup pid group
     case result of
-        Left error -> do
-            Helpers.log $ show error
-            return $ alert "danger" $ do
-                "Something was wrong when adding task "
-                pidToHtml pid
-                " to group "
-                groupToHtml group
-                ":"
-                H.ul $ H.li $ toHtml $ userMessage error
-        Right _ -> return $ alert "success" $ do
-            "Task "
-            pidToHtml pid
-            " has been added to group "
-            groupToHtml group
-            "."
+        Left error -> return $ T.failureTemplate pid group error
+        Right _ -> return $ T.successTemplate pid group
     where
-        groupToHtml :: String -> Html
-        groupToHtml group = H.strong $ toHtml group
-
-        pidToHtml :: Integer -> Html
-        pidToHtml pid = H.strong $ toHtml pid
+        myException exception
+            | elem exception [H.NoSuchTask, H.NoSuchGroup, H.UnknownError] = Just $ H.toError exception
+            | otherwise = Nothing
 
 
-showGroup :: ServerPart Response
-showGroup = do
+showGroup :: Maybe Html -> ServerPart Response
+showGroup maybeMessage = do
+    -- XXX: parsing twice
     path $ \(group :: String) -> do
-        guard =<< liftIO (groupExists group)
-        rq <- askRq
-        postResult <- if matchMethod POST $ rqMethod rq
-            then do
-                pidText <- lookText "pid"
-                case reads $ unpack pidText :: [(Integer, String)] of
-                    [(pid, "")] -> liftIO $ tryAddTaskToGroup pid group
-                    _ -> return $ alert "danger" "The provided PID is not valid."
-            else return mempty
-        tasks <- liftIO $ getTasksOfGroup group
-        ok $ toResponse $ template (rqUri rq) ("Group " ++ group) $ do
-            postResult
-            H.h1 $ toHtml $ "Group " ++ group
-            H.div ! A.class_ "row" $ do
-                H.div ! A.class_ "col-md-6" $ do
-                    H.p "Here are the tasks in this group:"
-                    H.ul $ forM_ tasks taskToLi
-                H.div ! A.class_ "col-md-6" $ do
-                    H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
-                        H.legend "Add a task to this group"
-                        H.input ! A.name "pid" ! A.type_ "text"
-                            ! A.class_ "form-control"
-                            ! A.placeholder "PID of a running task"
-                        -- FIXME: A silly space is needed otherwise there will be no
-                        -- space in between. Maybe there is a way to tell blaze not to
-                        -- eat all spaces.
-                        " "
-                        H.button ! A.class_ "btn btn-primary" $ "Add"
+        -- TODO: handle NoSuchGroup
+        tasks <- liftIO $ H.getTasksOfGroup group
+        ok $ toResponse $ T.showGroupTemplate maybeMessage group tasks
 
 
-showTask :: ServerPart Response
-showTask = do
-    path $ \(pid :: Integer) -> do
-        guard =<< (liftIO $ taskExists pid)
-        rq <- askRq
-        postResult <- if matchMethod POST $ rqMethod rq
-            then do
-                groupText <- lookText "group"
-                let group = unpack groupText
-                liftIO $ tryAddTaskToGroup pid group
-            else return mempty
-        cmdLine <- liftIO $ getCmdLine pid
-        allGroups <- liftIO $ getAllGroups
-        belongingGroups <- liftIO $ getGroupsOfTask pid
-        ok $ toResponse $ template (rqUri rq) ("Task " ++ show pid) $ do
-            postResult
-            H.h1 $ toHtml $ (printf "Task %d" pid :: String)
-            H.pre ! A.class_ "pre-scrollable" $ toHtml cmdLine
-            H.div ! A.class_ "row" $ do
-                H.div ! A.class_ "col-md-6" $ do
-                    H.p "Here are the groups this task belongs to:"
-                    H.ul $ forM_ belongingGroups groupToLi
-                H.div ! A.class_ "col-md-6" $ do
-                    showForm allGroups belongingGroups
-    where
-        showForm :: [String] -> [String] -> Html
-        showForm allGroups belongingGroups = do
-            H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
-                H.legend "Add this task to a group"
-                H.select ! A.class_ "form-control chosen-select"
-                        ! H.dataAttribute "placeholder" "Choose a Group..."
-                        ! A.name "group" $ do
-                    groupToOption ""
-                    forM_ (allGroups \\ belongingGroups) groupToOption
-                -- XXX: Silly space again
-                " "
-                H.button ! A.class_ "btn btn-primary" $ "Add"
-
-        groupToOption :: String -> Html
-        groupToOption group = H.option ! A.value (toValue group) $ toHtml group
+showTask :: Maybe Html -> ServerPart Response
+showTask maybeMessage = do
+    -- XXX: parsing twice
+    path $ \(pid :: H.Pid) -> do
+        -- TODO: handle NoSuchTask
+        task <- liftIO $ H.getTask pid
+        allGroups <- liftIO $ H.getAllGroups
+        ok $ toResponse $ T.showTaskTemplate maybeMessage task allGroups $ H.groups task

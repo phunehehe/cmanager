@@ -5,6 +5,8 @@ module Templates where
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 
+import Data.List ((\\))
+import Control.Monad (forM_)
 import Data.List (isPrefixOf)
 import Data.Monoid (mempty)
 import Network.HTTP.Base (urlEncode)
@@ -12,11 +14,101 @@ import System.FilePath ((</>))
 import Text.Blaze.Html5 (Html, (!), toHtml, toValue)
 import Text.Printf (printf)
 
-import qualified Helpers
+import qualified Helpers as E
 
 
-template :: String -> String -> Html -> Html
-template url title body = H.docTypeHtml ! A.lang "en" $ do
+-- Because pid may not be a valid PID
+failureTemplate :: Show a => a -> E.Group -> E.Error -> Html
+failureTemplate pid group error = alert "danger" $ do
+    "Something was wrong when adding task "
+    pidToHtml pid
+    " to group "
+    groupToHtml group
+    ":"
+    H.ul $ H.li $ toHtml $ E.message error
+
+
+successTemplate :: E.Pid -> E.Group -> Html
+successTemplate pid group = alert "success" $ do
+    "Task "
+    pidToHtml pid
+    " has been added to group "
+    groupToHtml group
+    "."
+
+
+pidToHtml :: Show a => a -> Html
+pidToHtml pid = H.strong $ toHtml $ show pid
+
+
+groupToHtml :: String -> Html
+groupToHtml group = H.strong $ toHtml group
+
+
+listGroupTemplate :: [E.Group] -> Html
+listGroupTemplate groups = template "All Groups" $ do
+    H.h1 "All Groups"
+    H.ul $ forM_ groups groupToLi
+
+
+showGroupTemplate :: (Maybe Html) -> E.Group -> [E.Task] -> Html
+showGroupTemplate maybeMessage group tasks = template title $ do
+    case maybeMessage of
+        Just message -> message
+        Nothing -> mempty
+    H.h1 $ toHtml title
+    H.div ! A.class_ "row" $ do
+        H.div ! A.class_ "col-md-6" $ do
+            H.p "Here are the tasks in this group:"
+            H.ul $ forM_ tasks taskToLi
+        H.div ! A.class_ "col-md-6" $ do
+            H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
+                H.legend "Add a task to this group"
+                H.input ! A.name "pid" ! A.type_ "text"
+                    ! A.class_ "form-control"
+                    ! A.placeholder "PID of a running task"
+                -- FIXME: A silly space is needed otherwise there will be no
+                -- space in between. Maybe there is a way to tell blaze not to
+                -- eat all spaces.
+                " "
+                H.button ! A.class_ "btn btn-primary" $ "Add"
+    where
+        title = printf "Group %s" group :: String
+
+
+showTaskTemplate :: (Maybe Html) -> E.Task -> [E.Group] -> [E.Group] -> Html
+showTaskTemplate maybeMessage task allGroups belongingGroups = template title $ do
+    case maybeMessage of
+        Just message -> message
+        Nothing -> mempty
+    H.h1 $ toHtml title
+    H.pre ! A.class_ "pre-scrollable" $ toHtml $ E.cmdLine task
+    H.div ! A.class_ "row" $ do
+        H.div ! A.class_ "col-md-6" $ do
+            H.p "Here are the groups this task belongs to:"
+            H.ul $ forM_ belongingGroups groupToLi
+        H.div ! A.class_ "col-md-6" $ do
+            showForm allGroups belongingGroups
+    where
+        title = printf "Task %d" $ E.pid task :: String
+        showForm :: [String] -> [String] -> Html
+        showForm allGroups belongingGroups = do
+            H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
+                H.legend "Add this task to a group"
+                H.select ! A.class_ "form-control chosen-select"
+                        ! H.dataAttribute "placeholder" "Choose a Group..."
+                        ! A.name "group" $ do
+                    groupToOption ""
+                    forM_ (allGroups \\ belongingGroups) groupToOption
+                -- XXX: Silly space again
+                " "
+                H.button ! A.class_ "btn btn-primary" $ "Add"
+        groupToOption :: String -> Html
+        groupToOption group = H.option ! A.value (toValue group) $ toHtml group
+
+
+template :: String -> Html -> Html
+template title body = H.docTypeHtml ! A.lang "en" $ do
     H.head $ do
         H.meta ! A.charset "utf-8"
         H.title $ toHtml title
@@ -43,7 +135,6 @@ template url title body = H.docTypeHtml ! A.lang "en" $ do
     where
         maybeActive :: String -> String -> Html
         maybeActive targetUrl text
-            | isPrefixOf targetUrl url = H.li ! A.class_ "active" $ anchor
             | otherwise = H.li $ anchor
             where anchor = H.a ! A.href (toValue targetUrl) $ toHtml text
 
@@ -53,10 +144,10 @@ groupToLi group = H.li $
     H.a ! A.href (toValue $ "/groups" </> urlEncode group) $ toHtml group
 
 
-taskToLi :: Helpers.Task -> Html
+taskToLi :: E.Task -> Html
 taskToLi task =
     H.li $ H.a ! A.href (toValue $ "/tasks" </> show pid) $ toHtml pid
-    where pid = Helpers.pid task
+    where pid = E.pid task
 
 
 alert :: String -> Html -> Html

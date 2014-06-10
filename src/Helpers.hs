@@ -23,9 +23,10 @@ proc = "/proc"
 
 
 type Group = String
+type Pid = Integer
 
 data Task = Task {
-    pid :: Integer,
+    pid :: Pid,
     cmdLine :: String,
     groups :: [Group]
 } deriving Generic
@@ -36,8 +37,18 @@ data MyException = NoSuchGroup | NoSuchTask | UnknownError
 instance Exception MyException
 
 
-userMessage :: IOError -> String
-userMessage (IOError _ _ _ description _ _) = description
+data Error = Error {
+    code :: String,
+    message :: String
+} deriving Generic
+
+instance ToJSON Error
+
+
+toError :: MyException -> Error
+toError NoSuchGroup  = Error "NoSuchGroup"  "The specified group does not exist."
+toError NoSuchTask   = Error "NoSuchTask"   "The specified task does not exist."
+toError UnknownError = Error "UnknownError" "Check the log for more details."
 
 
 log :: String -> IO ()
@@ -48,7 +59,7 @@ groupExists :: String -> IO Bool
 groupExists group = doesDirectoryExist $ cgroup </> group
 
 
-taskExists :: Integer -> IO Bool
+taskExists :: Pid -> IO Bool
 taskExists pid = doesDirectoryExist $ proc </> show pid
 
 
@@ -69,7 +80,7 @@ getTasksOfGroup group = do
         else throw NoSuchGroup
 
 
-getTask :: Integer -> IO Task
+getTask :: Pid -> IO Task
 getTask pid = do
     exist <- taskExists pid
     if exist
@@ -80,7 +91,7 @@ getTask pid = do
         else throw NoSuchTask
 
 
-getCmdLine :: Integer -> IO String
+getCmdLine :: Pid -> IO String
 getCmdLine pid = do
     nullTerminated <- readFile $ proc </> show pid </> "cmdline"
     return $ map replaceNull nullTerminated
@@ -89,7 +100,7 @@ getCmdLine pid = do
         replaceNull c = c
 
 
-getGroupsOfTask :: Integer -> IO [String]
+getGroupsOfTask :: Pid -> IO [String]
 getGroupsOfTask pid = do
     contents <- readFile $ proc </> show pid </> "cgroup"
     return $ map convertOne $ lines contents
@@ -107,7 +118,7 @@ getGroupsOfTask pid = do
         realHier tempHier = last $ splitOn "=" tempHier
 
 
-addTaskToGroup :: Integer -> String -> IO (Maybe ())
+addTaskToGroup :: Pid -> String -> IO (Maybe ())
 addTaskToGroup pid group = do
     -- Assuming groups and tasks don't disappear during the whole time
     exist <- taskExists pid

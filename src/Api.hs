@@ -12,17 +12,9 @@ import Happstack.Lite (ServerPart, Response, toResponse, path, ok, lookText)
 import qualified Helpers as H
 
 
-data Error = Error {
-    code :: String,
-    message :: String
-} deriving Generic
-
-instance ToJSON Error
-
-
 data ApiResponse a where
     SuccessApiResponse :: ToJSON a => Maybe a -> ApiResponse a
-    FailureApiResponse :: Error -> ApiResponse a
+    FailureApiResponse :: H.Error -> ApiResponse a
 
 instance ToJSON (ApiResponse a) where
     toJSON (SuccessApiResponse maybeData) = object $ ["success" .= True] ++ d
@@ -37,16 +29,10 @@ instance ToJSON (ApiResponse a) where
 nothing = Nothing :: Maybe ()
 
 
-handle :: ToJSON a => Either Error a -> ApiResponse a
+handle :: ToJSON a => Either H.Error a -> ApiResponse a
 handle maybeResult = case maybeResult of
     Left error -> FailureApiResponse $ error
     Right result -> SuccessApiResponse $ Just result
-
-
-toError :: H.MyException -> Error
-toError H.NoSuchGroup  = Error "NoSuchGroup"  "The specified group does not exist."
-toError H.NoSuchTask   = Error "NoSuchTask"   "The specified task does not exist."
-toError H.UnknownError = Error "UnknownError" "Check the log for more details."
 
 
 respondJSON :: ToJSON a => a -> ServerPart Response
@@ -59,7 +45,7 @@ omniTry exceptions f = do
     respondJSON $ handle result
     where
         myException exception
-            | elem exception exceptions = Just $ toError exception
+            | elem exception exceptions = Just $ H.toError exception
             | otherwise = Nothing
 
 
@@ -74,13 +60,13 @@ showGroup = path $ \(group :: String) -> omniTry [H.NoSuchGroup] $ H.getTasksOfG
 
 
 showTask :: ServerPart Response
-showTask = path $ \(pid :: Integer) -> omniTry [H.NoSuchTask] $ H.getTask pid
+showTask = path $ \(pid :: H.Pid) -> omniTry [H.NoSuchTask] $ H.getTask pid
 
 
 addTaskToGroup :: ServerPart Response
 addTaskToGroup = path $ \(group :: String) -> do
     pidText <- lookText "pid"
-    case reads $ unpack pidText :: [(Integer, String)] of
+    case reads $ unpack pidText :: [(H.Pid, String)] of
         [(pid, "")] -> do
             omniTry [H.NoSuchGroup, H.NoSuchTask, H.UnknownError] $ H.addTaskToGroup pid group
-        _ -> respondJSON $ FailureApiResponse $ toError H.NoSuchTask
+        _ -> respondJSON $ FailureApiResponse $ H.toError H.NoSuchTask
