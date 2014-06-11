@@ -3,6 +3,7 @@ module Web where
 
 
 import Control.Exception (tryJust)
+import Control.Monad (mzero)
 import Control.Monad.Trans (liftIO)
 import Data.Text.Lazy (unpack)
 import Happstack.Lite (ServerPart, Response, toResponse, path, ok, lookText)
@@ -50,16 +51,27 @@ showGroup :: Maybe Html -> ServerPart Response
 showGroup maybeMessage = do
     -- XXX: parsing twice
     path $ \(group :: String) -> do
-        -- TODO: handle NoSuchGroup
-        tasks <- liftIO $ H.getTasksOfGroup group
-        ok $ toResponse $ T.showGroupTemplate maybeMessage group tasks
+        result <- liftIO $ tryJust myException $ H.getTasksOfGroup group
+        case result of
+            Left _ -> mzero
+            Right tasks -> ok $ toResponse $ T.showGroupTemplate maybeMessage group tasks
+    where
+        myException exception
+            | elem exception [H.NoSuchGroup] = Just $ H.toError exception
+            | otherwise = Nothing
 
 
 showTask :: Maybe Html -> ServerPart Response
 showTask maybeMessage = do
     -- XXX: parsing twice
     path $ \(pid :: H.Pid) -> do
-        -- TODO: handle NoSuchTask
-        task <- liftIO $ H.getTask pid
-        allGroups <- liftIO $ H.getAllGroups
-        ok $ toResponse $ T.showTaskTemplate maybeMessage task allGroups $ H.groups task
+        result <- liftIO $ tryJust myException $ H.getTask pid
+        case result of
+            Left _ -> mzero
+            Right task -> do
+                allGroups <- liftIO $ H.getAllGroups
+                ok $ toResponse $ T.showTaskTemplate maybeMessage task allGroups $ H.groups task
+    where
+        myException exception
+            | elem exception [H.NoSuchGroup] = Just $ H.toError exception
+            | otherwise = Nothing

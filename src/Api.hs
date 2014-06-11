@@ -6,7 +6,6 @@ import Control.Exception (tryJust)
 import Control.Monad.Trans (liftIO)
 import Data.Aeson (object, (.=), ToJSON, encode, toJSON)
 import Data.Text.Lazy (unpack)
-import GHC.Generics (Generic)
 import Happstack.Lite (ServerPart, Response, toResponse, path, ok, lookText)
 
 import qualified Helpers as H
@@ -23,10 +22,6 @@ instance ToJSON (ApiResponse a) where
                 Just data_ -> ["data" .= data_]
                 Nothing -> []
     toJSON (FailureApiResponse error) = object ["success" .= False, "error" .= error]
-
-
--- A Nothing that is an instance of ToJSON
-nothing = Nothing :: Maybe ()
 
 
 handle :: ToJSON a => Either H.Error a -> ApiResponse a
