@@ -15,7 +15,6 @@ main = do
     L.serve Nothing myApp
 
 
--- TODO: the home page is 404
 myApp :: L.ServerPart L.Response
 myApp = msum
   [ dir "groups" $ msum [ method GET >> W.parseGroup >>= W.showGroup Nothing

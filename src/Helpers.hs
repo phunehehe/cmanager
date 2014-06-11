@@ -2,19 +2,16 @@
 module Helpers where
 
 
--- XXX: This is said to be unportable
-import GHC.IO.Exception (IOException (IOError))
-import Control.Exception (tryJust, throw, Exception)
-import Control.Monad (guard)
+import Control.Exception (throw, Exception)
 import Data.Aeson (object, (.=), ToJSON, toJSON)
 import Data.List.Split (splitOn)
+import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import System.Directory (doesDirectoryExist)
 import System.FilePath (takeDirectory, makeRelative, (</>))
 import System.FilePath.Find (find, always, fileName, (==?))
-import System.IO.Error (tryIOError, isDoesNotExistError)
 import System.IO (hPutStrLn, stderr)
-import Data.Typeable (Typeable)
+import System.IO.Error (tryIOError)
 
 
 -- XXX: Maybe use </> instead of inlining /
@@ -25,15 +22,19 @@ proc = "/proc"
 type Group = String
 type Pid = Integer
 
+
 data Task = Task {
     pid :: Pid,
     cmdLine :: String,
     groups :: [Group]
 } deriving Generic
+
 instance ToJSON Task
+
 
 data MyException = NoSuchGroup | NoSuchTask | UnknownError
     deriving (Show, Typeable, Eq)
+
 instance Exception MyException
 
 
@@ -66,12 +67,12 @@ taskExists pid = doesDirectoryExist $ proc </> show pid
 -- XXX: Maybe checking directory is better
 getAllGroups :: IO [Group]
 getAllGroups = find always (fileName ==? "tasks") cgroup
-    >>= return . map takeDirectory
-    >>= return . map (makeRelative cgroup)
+    >>= return . map (makeRelative cgroup . takeDirectory)
 
 
 getTasksOfGroup :: String -> IO [Task]
 getTasksOfGroup group = do
+    -- FIXME: This is not atomic
     exist <- groupExists group
     if exist
         then do
@@ -82,6 +83,7 @@ getTasksOfGroup group = do
 
 getTask :: Pid -> IO Task
 getTask pid = do
+    -- FIXME: This is not atomic
     exist <- taskExists pid
     if exist
         then do
@@ -121,7 +123,7 @@ getGroupsOfTask pid = do
 
 addTaskToGroup :: Pid -> String -> IO (Maybe ())
 addTaskToGroup pid group = do
-    -- Assuming groups and tasks don't disappear during the whole time
+    -- FIXME: This is not atomic
     exist <- taskExists pid
     if not exist
         then throw NoSuchTask

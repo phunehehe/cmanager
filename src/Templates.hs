@@ -7,7 +7,6 @@ import qualified Text.Blaze.Html5.Attributes as A
 
 import Data.List ((\\))
 import Control.Monad (forM_)
-import Data.List (isPrefixOf)
 import Data.Monoid (mempty)
 import Network.HTTP.Base (urlEncode)
 import System.FilePath ((</>))
