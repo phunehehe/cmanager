@@ -1,25 +1,25 @@
 { config, lib, pkgs, ... }:
 
 let
-    siteDir = config.cgroupsManager.siteDir;
+    siteDir = config.cmanager.siteDir;
     callPackage = package:
         pkgs.lib.callPackageWith pkgs.haskellPackages package { config = config; };
-    cgroupsManager = callPackage "${siteDir}/package.nix";
+    cmanager = callPackage "${siteDir}/package.nix";
 
 in {
 
     options = {
-        cgroupsManager.siteDir = lib.mkOption {
+        cmanager.siteDir = lib.mkOption {
             type = lib.types.str;
             # TODO: detect this automatically
-            default = "/cgroups";
+            default = "/opt/cmanager";
         };
     };
 
     config = {
 
         nixpkgs.config.allowUnfree = true;
-        environment.systemPackages = [ cgroupsManager ];
+        environment.systemPackages = [ cmanager ];
 
         services.nginx.enable = true;
         services.nginx.httpConfig = ''
@@ -39,13 +39,13 @@ in {
             }
         '';
 
-        systemd.services.cgroups-manager = {
-            description = "CGroups Manager";
+        systemd.services.cmanager = {
+            description = "CManager";
             wantedBy = [ "multi-user.target" ];
             after = [ "network.target" ];
-            path = [ cgroupsManager ];
+            path = [ cmanager ];
             serviceConfig = {
-                ExecStart = "${cgroupsManager}/bin/cgroups-manager";
+                ExecStart = "${cmanager}/bin/cmanager";
                 Restart = "always";
             };
         };

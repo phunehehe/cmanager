@@ -3,9 +3,9 @@
 }:
 
 cabal.mkDerivation (self: {
-  pname = "cgroups-manager";
+  pname = "cmanager";
   version = "0.1.0.0";
-  src = "${config.cgroupsManager.siteDir}";
+  src = "${config.cmanager.siteDir}";
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
@@ -13,7 +13,7 @@ cabal.mkDerivation (self: {
     split text
   ];
   meta = {
-    homepage = "https://bitbucket.org/phunehehe/cgroups-manager";
+    homepage = "https://bitbucket.org/phunehehe/cmanager";
     description = "A web service that manages CGroups";
     license = self.stdenv.lib.licenses.unfree;
     platforms = self.ghc.meta.platforms;

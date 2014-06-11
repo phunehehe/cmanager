@@ -1,7 +1,7 @@
 -- For further documentation, see http://haskell.org/cabal/users-guide/
 
 -- The name of the package.
-name:                cgroups-manager
+name:                cmanager
 
 -- The package version.  See the Haskell package versioning policy (PVP)
 -- for standards guiding when and how versions should be incremented.
@@ -18,7 +18,7 @@ synopsis:            A web service that manages CGroups
 -- description:
 
 -- URL for the project homepage or repository.
-homepage:            https://bitbucket.org/phunehehe/cgroups-manager
+homepage:            https://bitbucket.org/phunehehe/cmanager
 
 -- The license under which the package is released.
 license:             AllRightsReserved
@@ -44,7 +44,7 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 
-executable cgroups-manager
+executable cmanager
   -- .hs or .lhs file containing the Main module.
   main-is: Main.hs
   hs-source-dirs: src

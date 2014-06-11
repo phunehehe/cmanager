@@ -115,17 +115,17 @@ template title body = H.docTypeHtml ! A.lang "en" $ do
         H.link ! A.href "/css/bootstrap.min.css" ! A.rel "stylesheet"
         H.link ! A.href "/css/chosen.min.css" ! A.rel "stylesheet"
         H.link ! A.href "/css/chosen-bootstrap.css" ! A.rel "stylesheet"
-        H.link ! A.href "/css/cgroups.css" ! A.rel "stylesheet"
+        H.link ! A.href "/css/cmanager.css" ! A.rel "stylesheet"
     H.body $ do
         H.div ! A.class_ "navbar navbar-inverse navbar-fixed-top" $ H.div ! A.class_ "container" $ do
             H.div ! A.class_ "navbar-header" $ do
-                H.a ! A.class_ "navbar-brand" ! A.href "/" $ "CGroups"
+                H.a ! A.class_ "navbar-brand" ! A.href "/" $ "CManager"
         H.div ! A.class_ "container" $ do
             body
         H.script ! A.src "/js/jquery.min.js" $ mempty
         H.script ! A.src "/js/bootstrap.min.js" $ mempty
         H.script ! A.src "/js/chosen.jquery.min.js" $ mempty
-        H.script ! A.src "/js/cgroups.js" $ mempty
+        H.script ! A.src "/js/cmanager.js" $ mempty
 
 
 groupToLi :: String -> Html
