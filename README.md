@@ -1,11 +1,7 @@
-Install CGroup tools (reboot required)
+# Installation
 
-    sudo apt-get install cgroup-bin
-
-Dependencies
-
-    cabal install happstack-lite filemanip http split
-
-sudo cgcreate -a vagrant -g cpu,memory:awesome_group
-
-cgexec -g cpu,memory:awesome_group bash
+ 1. Recommended: put the source code in `/opt/cmanager`
+ 2. Include `cmanager.nix` from `/etc/nixos/configuration.nix`
+ 3. If the source code is not in `/opt/cmanager`, override `cmanager.siteDir`
+    appropriately
+ 4. Run `nixos-rebuild switch`
