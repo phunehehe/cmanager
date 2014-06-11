@@ -21,7 +21,7 @@ synopsis:            A web service that manages CGroups
 homepage:            https://bitbucket.org/phunehehe/cmanager
 
 -- The license under which the package is released.
-license:             AllRightsReserved
+license:             OtherLicense
 
 -- The file containing the license text.
 license-file:        LICENSE
