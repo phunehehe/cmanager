@@ -19,11 +19,11 @@ main = do
 myApp :: L.ServerPart L.Response
 myApp = msum
   [ dir "groups" $ nullDir >> W.listGroups
-  , dir "groups" $ msum [ method GET >> W.showGroup Nothing
-                        , method POST >> W.shimGroup >>= W.showGroup
+  , dir "groups" $ msum [ method GET >> W.parseGroup >>= W.showGroup Nothing
+                        , method POST >> W.parseGroup >>= W.processGroup >>= uncurry W.showGroup
                         ]
-  , dir "tasks"  $ msum [ method GET >> W.showTask Nothing
-                        , method POST >> W.shimTask >>= W.showTask
+  , dir "tasks"  $ msum [ method GET >> W.parsePid >>= W.showTask Nothing
+                        , method POST >> W.parsePid >>= W.processTask >>= uncurry W.showTask
                         ]
   , dir "api" $ dir "groups" $ nullDir >> A.listGroups
   , dir "api" $ dir "groups" $ msum [ method GET >> A.showGroup
