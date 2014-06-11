@@ -1,19 +1,29 @@
 # API
 
+
 ## Get All Groups
-URL: `/groups`
-Method: GET
+
+  - URL: `/groups`
+  - Method: GET
+
 
 ## Get Tasks in a Group
-URL: `/groups/<group_name>`
-Method: GET
+
+  - URL: `/groups/<group_name>`
+  - Method: GET
+
 `<group_name>` should be URL-encoded
 
+
 ## Add a Task to a Group
-URL: `/groups/<group_name>`
-Method: POST
+
+  - URL: `/groups/<group_name>`
+  - Method: POST
+
 `<group_name>` should be URL-encoded
+
 Parameters:
+
   - `pid`: The PID of the task to be added to the group
 
 
