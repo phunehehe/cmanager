@@ -1,5 +1,5 @@
-{ cabal, aeson, blazeHtml, filemanip, filepath, happstackLite
-, happstackServer, HTTP, mtl, split, text, config
+{ cabal, aeson, blazeHtml, filemanip, filepath, happstackLite, HTTP
+, mtl, split, text, config
 }:
 
 cabal.mkDerivation (self: {
@@ -9,13 +9,13 @@ cabal.mkDerivation (self: {
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
-    aeson blazeHtml filemanip filepath happstackLite happstackServer
-    HTTP mtl split text
+    aeson blazeHtml filemanip filepath happstackLite HTTP mtl split
+    text
   ];
   meta = {
     homepage = "https://bitbucket.org/phunehehe/cmanager";
     description = "A web service that manages CGroups";
-    license = self.stdenv.lib.licenses.unfree;
+    license = "unknown";
     platforms = self.ghc.meta.platforms;
   };
 })

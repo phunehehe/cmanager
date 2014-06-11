@@ -18,7 +18,6 @@ in {
 
     config = {
 
-        nixpkgs.config.allowUnfree = true;
         environment.systemPackages = [ cmanager ];
 
         services.nginx.enable = true;
