@@ -100,6 +100,7 @@ getCmdLine pid = do
         replaceNull c = c
 
 
+-- TODO: this does not handle cpu,cpuacct vs cpuacct,cpu
 getGroupsOfTask :: Pid -> IO [String]
 getGroupsOfTask pid = do
     contents <- readFile $ proc </> show pid </> "cgroup"

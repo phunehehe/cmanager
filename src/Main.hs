@@ -18,8 +18,7 @@ main = do
 -- TODO: the home page is 404
 myApp :: L.ServerPart L.Response
 myApp = msum
-  [ dir "groups" $ nullDir >> W.listGroups
-  , dir "groups" $ msum [ method GET >> W.parseGroup >>= W.showGroup Nothing
+  [ dir "groups" $ msum [ method GET >> W.parseGroup >>= W.showGroup Nothing
                         , method POST >> W.parseGroup >>= W.processGroup >>= uncurry W.showGroup
                         ]
   , dir "tasks"  $ msum [ method GET >> W.parsePid >>= W.showTask Nothing
@@ -30,4 +29,5 @@ myApp = msum
                                     , method POST >> A.addTaskToGroup
                                     ]
   , dir "api" $ dir "tasks"  $ A.showTask
+  , nullDir >> W.listGroups
   ]
