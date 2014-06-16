@@ -1,23 +1,34 @@
-# API
+# CManager
+
+CManager is a web service that manages CGroups. It provides a website for human
+use, as well as an API for machine use.
 
 
-## Get All Groups
+## Website
 
-  - URL: `/groups`
+Just visit `localhost`, intuition will lead your way from there.
+
+
+## API Specs
+
+
+### Get All Groups
+
+  - URL: `/api/groups`
   - Method: GET
 
 
-## Get Tasks in a Group
+### Get Tasks in a Group
 
-  - URL: `/groups/<group_name>`
+  - URL: `/api/groups/<group_name>`
   - Method: GET
 
 `<group_name>` should be URL-encoded
 
 
-## Add a Task to a Group
+### Add a Task to a Group
 
-  - URL: `/groups/<group_name>`
+  - URL: `/api/groups/<group_name>`
   - Method: POST
 
 `<group_name>` should be URL-encoded
@@ -27,7 +38,7 @@ Parameters:
   - `pid`: The PID of the task to be added to the group
 
 
-# Installation
+## Installation
 
  1. Recommended: put the source code in `/opt/cmanager`
  2. Include `module.nix` from `/etc/nixos/configuration.nix`
