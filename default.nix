@@ -1,11 +1,11 @@
 { cabal, aeson, blazeHtml, filemanip, filepath, happstackLite, HTTP
-, mtl, split, text, config
+, mtl, split, text
 }:
 
 cabal.mkDerivation (self: {
   pname = "cmanager";
   version = "0.1.0.0";
-  src = "${config.cmanager.siteDir}";
+  src = ./.;
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
