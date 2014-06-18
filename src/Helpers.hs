@@ -3,15 +3,17 @@ module Helpers where
 
 
 import Control.Exception (throw, Exception)
+import Control.Exception (tryJust)
 import Data.Aeson (object, (.=), ToJSON, toJSON)
+import Data.List (isPrefixOf)
 import Data.List.Split (splitOn)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
-import System.Directory (doesDirectoryExist)
+import System.Directory (doesDirectoryExist, canonicalizePath)
 import System.FilePath (takeDirectory, makeRelative, (</>))
 import System.FilePath.Find (find, always, fileName, (==?))
 import System.IO (hPutStrLn, stderr)
-import System.IO.Error (tryIOError)
+import System.IO.Error (tryIOError, isDoesNotExistError)
 
 
 -- XXX: Maybe use </> instead of inlining /
@@ -27,7 +29,7 @@ data Task = Task {
     pid :: Pid,
     cmdLine :: String,
     groups :: [Group]
-} deriving Generic
+} deriving (Show, Generic)
 
 instance ToJSON Task
 
@@ -57,7 +59,15 @@ log message = hPutStrLn stderr $ message
 
 
 groupExists :: String -> IO Bool
-groupExists group = doesDirectoryExist $ cgroup </> group
+groupExists group = do
+    result <- tryJust notExist $ canonicalizePath $ cgroup </> group
+    case result of
+        Left _ -> return False
+        Right fullPath -> return $ isPrefixOf cgroup fullPath
+    where
+        notExist exception
+            | isDoesNotExistError exception = Just exception
+            | otherwise = Nothing
 
 
 taskExists :: Pid -> IO Bool
