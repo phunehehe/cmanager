@@ -1,20 +1,11 @@
 { config, lib, pkgs, ... }:
 
 let
-    siteDir = config.cmanager.siteDir;
     callPackage = package:
         pkgs.lib.callPackageWith pkgs.haskellPackages package {};
-    cmanager = callPackage "${siteDir}/default.nix";
+    cmanager = callPackage ./default.nix;
 
 in {
-
-    options = {
-        cmanager.siteDir = lib.mkOption {
-            type = lib.types.str;
-            # TODO: detect this automatically
-            default = "/opt/cmanager";
-        };
-    };
 
     config = {
 
@@ -28,7 +19,7 @@ in {
                 application/x-javascript js;
             }
             server {
-                root ${siteDir}/static;
+                root ${./static};
                 location / {
                     try_files $uri @happstack;
                 }
