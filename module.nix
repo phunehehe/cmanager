@@ -4,7 +4,7 @@ let
     siteDir = config.cmanager.siteDir;
     callPackage = package:
         pkgs.lib.callPackageWith pkgs.haskellPackages package { config = config; };
-    cmanager = callPackage "${siteDir}/package.nix";
+    cmanager = callPackage "${siteDir}/default.nix";
 
 in {
 
