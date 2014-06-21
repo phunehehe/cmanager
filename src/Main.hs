@@ -18,14 +18,17 @@ main = do
     L.serve Nothing myApp
 
 
+-- Parse a group from the URL, which is then passed to endpoints
 parseGroup :: ServerPart Group
 parseGroup = L.path $ \(group :: Group) -> return group
 
 
+-- Parse a PID from the URL, which is then passed to endpoints
 parsePid :: ServerPart Pid
 parsePid = L.path $ \(pid :: Pid) -> return pid
 
 
+-- Application routes
 myApp :: ServerPart L.Response
 myApp = msum
   [ L.nullDir >> W.listGroups
@@ -40,4 +43,5 @@ myApp = msum
                                     , method POST >> parseGroup >>= A.addTaskToGroup
                                     ]
   , dir "api" $ dir "tasks" $ parsePid >>= A.showTask
+  -- TODO: Maybe add a 404 page here
   ]
