@@ -2,66 +2,71 @@
 module Api where
 
 
-import Control.Exception (tryJust)
 import Control.Monad.Trans (liftIO)
 import Data.Aeson (object, (.=), ToJSON, encode, toJSON)
 import Data.Text.Lazy (unpack)
-import Happstack.Lite (ServerPart, Response, toResponse, path, ok, lookText)
+import Happstack.Lite (ServerPart, Response, toResponse, ok, lookText)
 
 import qualified Helpers as H
 
 
+-- Data structure to generate JSON using Aeson
 data ApiResponse a where
     SuccessApiResponse :: ToJSON a => Maybe a -> ApiResponse a
     FailureApiResponse :: H.Error -> ApiResponse a
 
 instance ToJSON (ApiResponse a) where
-    toJSON (SuccessApiResponse maybeData) = object $ ["success" .= True] ++ d
-        where
-            d = case maybeData of
-                Just data_ -> ["data" .= data_]
-                Nothing -> []
-    toJSON (FailureApiResponse error) = object ["success" .= False, "error" .= error]
+    toJSON (SuccessApiResponse maybeData) = object $
+        ["success" .= True] ++
+        case maybeData of
+            Just data_ -> ["data" .= data_]
+            Nothing -> []
+    toJSON (FailureApiResponse error) = object
+        ["success" .= False, "error" .= error]
 
 
-handle :: ToJSON a => Either H.Error a -> ApiResponse a
-handle maybeResult = case maybeResult of
-    Left error -> FailureApiResponse $ error
-    Right result -> SuccessApiResponse $ Just result
+-- Function aliases to save some space
+apiResponse :: ApiResponse a -> ServerPart Response
+apiResponse = ok . toResponse . encode
 
 
-respondJSON :: ToJSON a => a -> ServerPart Response
-respondJSON = ok . toResponse . encode
-
-
-omniTry :: ToJSON a => [H.MyException] -> IO a -> ServerPart Response
-omniTry exceptions f = do
-    result <- liftIO $ tryJust myException $ f
-    respondJSON $ handle result
-    where
-        myException exception
-            | elem exception exceptions = Just $ H.toError exception
-            | otherwise = Nothing
-
-
+-- API endpoint to list all groups
 listGroups :: ServerPart Response
 listGroups = do
     groups <- liftIO H.getAllGroups
-    respondJSON $ SuccessApiResponse $ Just groups
+    apiResponse $ SuccessApiResponse $ Just groups
 
 
-showGroup :: ServerPart Response
-showGroup = path $ \(group :: String) -> omniTry [H.NoSuchGroup] $ H.getTasksOfGroup group
+-- API endpoint to list PIDs of tasks in a group
+-- Parameter group is supplied by parseGroup in Main
+showGroup :: H.Group -> ServerPart Response
+showGroup group = do
+    maybePids <- liftIO $ H.getTasksOfGroup group
+    case maybePids of
+        Left error -> apiResponse $ FailureApiResponse error
+        Right pids -> apiResponse $ SuccessApiResponse $ Just pids
 
 
-showTask :: ServerPart Response
-showTask = path $ \(pid :: H.Pid) -> omniTry [H.NoSuchTask] $ H.getTask pid
+-- API endpoint to show details of a task
+-- Parameter pid is supplied by parsePid in Main
+showTask :: H.Pid -> ServerPart Response
+showTask pid = do
+    maybeTask <- liftIO $ H.getTask pid
+    case maybeTask of
+        Left error -> apiResponse $ FailureApiResponse error
+        Right task -> apiResponse $ SuccessApiResponse $ Just task
 
 
-addTaskToGroup :: ServerPart Response
-addTaskToGroup = path $ \(group :: String) -> do
+-- API endpoint to add a task to a group
+-- Parameter group is supplied by parseGroup in Main
+-- pid is a POST parameter
+addTaskToGroup :: H.Group -> ServerPart Response
+addTaskToGroup group = do
     pidText <- lookText "pid"
     case reads $ unpack pidText :: [(H.Pid, String)] of
         [(pid, "")] -> do
-            omniTry [H.NoSuchGroup, H.NoSuchTask, H.UnknownError] $ H.addTaskToGroup pid group
-        _ -> respondJSON $ FailureApiResponse $ H.toError H.NoSuchTask
+            result <- liftIO $ H.addTaskToGroup pid group
+            case result of
+                Left error -> apiResponse $ FailureApiResponse error
+                Right _ -> apiResponse $ SuccessApiResponse (Nothing :: Maybe String)
+        _ -> apiResponse $ FailureApiResponse $ H.toError H.NoSuchTask

@@ -3,10 +3,13 @@ module Main where
 
 
 import qualified Happstack.Lite as L
-import Happstack.Lite (dir, nullDir, msum, method, Method (GET, POST))
+
+import Happstack.Lite (ServerPart, dir, msum, method, Method (GET, POST))
 
 import qualified Web as W
 import qualified Api as A
+
+import Helpers (Group, Pid)
 
 
 main :: IO ()
@@ -15,18 +18,26 @@ main = do
     L.serve Nothing myApp
 
 
-myApp :: L.ServerPart L.Response
+parseGroup :: ServerPart Group
+parseGroup = L.path $ \(group :: Group) -> return group
+
+
+parsePid :: ServerPart Pid
+parsePid = L.path $ \(pid :: Pid) -> return pid
+
+
+myApp :: ServerPart L.Response
 myApp = msum
-  [ dir "groups" $ msum [ method GET >> W.parseGroup >>= W.showGroup Nothing
-                        , method POST >> W.parseGroup >>= W.processGroup >>= uncurry W.showGroup
+  [ L.nullDir >> W.listGroups
+  , dir "groups" $ msum [ method GET >> parseGroup >>= W.showGroup Nothing
+                        , method POST >> parseGroup >>= W.processGroup >>= uncurry W.showGroup
                         ]
-  , dir "tasks"  $ msum [ method GET >> W.parsePid >>= W.showTask Nothing
-                        , method POST >> W.parsePid >>= W.processTask >>= uncurry W.showTask
+  , dir "tasks"  $ msum [ method GET >> parsePid >>= W.showTask Nothing
+                        , method POST >> parsePid >>= W.processTask >>= uncurry W.showTask
                         ]
-  , dir "api" $ dir "groups" $ nullDir >> A.listGroups
-  , dir "api" $ dir "groups" $ msum [ method GET >> A.showGroup
-                                    , method POST >> A.addTaskToGroup
+  , dir "api" $ dir "groups" $ L.nullDir >> A.listGroups
+  , dir "api" $ dir "groups" $ msum [ method GET >> parseGroup >>= A.showGroup
+                                    , method POST >> parseGroup >>= A.addTaskToGroup
                                     ]
-  , dir "api" $ dir "tasks"  $ A.showTask
-  , nullDir >> W.listGroups
+  , dir "api" $ dir "tasks" $ parsePid >>= A.showTask
   ]

@@ -2,27 +2,29 @@
 module Web where
 
 
-import Control.Exception (tryJust)
 import Control.Monad (mzero)
 import Control.Monad.Trans (liftIO)
 import Data.Text.Lazy (unpack)
-import Happstack.Lite (ServerPart, Response, toResponse, path, ok, lookText)
+import Happstack.Lite (ServerPart, Response, toResponse, ok, lookText)
 import Text.Blaze.Html5 (Html)
 
 import qualified Helpers as H
 import qualified Templates as T
 
 
-listGroups :: ServerPart Response
-listGroups = do
-    groups <- liftIO H.getAllGroups
-    ok $ toResponse $ T.listGroupTemplate groups
+-- Add a task to a group, returning a HTML message
+addTaskToGroup :: H.Pid -> H.Group -> IO Html
+addTaskToGroup pid group = do
+    result <- H.addTaskToGroup pid group
+    case result of
+        Left error -> return $ T.failureTemplate pid group error
+        Right _ -> return $ T.successTemplate pid group
 
 
-parseGroup :: ServerPart (H.Group)
-parseGroup = path $ \(group :: H.Group) -> return group
-
-
+-- Provided a group in the URL, parse a PID from POST parameters and add it to
+-- the group
+-- The resulting Html needs to be wrapped in Just because it will be passed to
+-- showGroup, which expects a Maybe
 processGroup :: H.Group -> ServerPart (Maybe Html, H.Group)
 processGroup group = do
     pidText <- lookText "pid"
@@ -30,25 +32,13 @@ processGroup group = do
         [(pid, "")] -> do
             html <- liftIO $ addTaskToGroup pid group
             return (Just html, group)
-        _ -> return $ (Just $ T.failureTemplate pidText group $ H.toError H.NoSuchTask, group)
+        _ -> return (Just $ T.failureTemplate pidText group $ H.toError H.NoSuchTask, group)
 
 
-showGroup :: Maybe Html -> H.Group -> ServerPart Response
-showGroup maybeMessage group = do
-    result <- liftIO $ tryJust myException $ H.getTasksOfGroup group
-    case result of
-        Left _ -> mzero
-        Right tasks -> ok $ toResponse $ T.showGroupTemplate maybeMessage group tasks
-    where
-        myException exception
-            | elem exception [H.NoSuchGroup] = Just $ H.toError exception
-            | otherwise = Nothing
-
-
-parsePid :: ServerPart H.Pid
-parsePid = path $ \(pid :: H.Pid) -> return pid
-
-
+-- Provided a PID in the URL, parse a group from POST parameters and add the
+-- PID to the group
+-- The resulting Html needs to be wrapped in Just because it will be passed to
+-- showTask, which expects a Maybe
 processTask :: H.Pid -> ServerPart (Maybe Html, H.Pid)
 processTask pid = do
     groupText <- lookText "group"
@@ -56,27 +46,28 @@ processTask pid = do
     return (Just html, pid)
 
 
+-- Web endpoint to list all groups
+listGroups :: ServerPart Response
+listGroups = do
+    groups <- liftIO H.getAllGroups
+    ok $ toResponse $ T.listGroupTemplate groups
+
+
+-- Web endpoint to list PIDs of tasks in a group
+showGroup :: Maybe Html -> H.Group -> ServerPart Response
+showGroup maybeMessage group = do
+    maybePids <- liftIO $ H.getTasksOfGroup group
+    case maybePids of
+        Left _ -> mzero
+        Right pids -> ok $ toResponse $ T.showGroupTemplate maybeMessage group pids
+
+
+-- Web endpoint to show details of a task
 showTask :: Maybe Html -> H.Pid -> ServerPart Response
 showTask maybeMessage pid = do
-    result <- liftIO $ tryJust myException $ H.getTask pid
-    case result of
+    maybeTask <- liftIO $  H.getTask pid
+    case maybeTask of
         Left _ -> mzero
         Right task -> do
             allGroups <- liftIO $ H.getAllGroups
             ok $ toResponse $ T.showTaskTemplate maybeMessage task allGroups $ H.groups task
-    where
-        myException exception
-            | elem exception [H.NoSuchGroup] = Just $ H.toError exception
-            | otherwise = Nothing
-
-
-addTaskToGroup :: H.Pid -> H.Group -> IO Html
-addTaskToGroup pid group = do
-    result <- tryJust myException $ H.addTaskToGroup pid group
-    case result of
-        Left error -> return $ T.failureTemplate pid group error
-        Right _ -> return $ T.successTemplate pid group
-    where
-        myException exception
-            | elem exception [H.NoSuchTask, H.NoSuchGroup, H.UnknownError] = Just $ H.toError exception
-            | otherwise = Nothing
