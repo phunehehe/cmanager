@@ -25,16 +25,20 @@ instance ToJSON (ApiResponse a) where
         ["success" .= False, "error" .= error]
 
 
--- Function aliases to save some space
-apiResponse :: ApiResponse a -> ServerPart Response
-apiResponse = ok . toResponse . encode
+-- Function aliases to save some typing
+
+success :: ToJSON a => Maybe a -> ServerPart Response
+success = ok . toResponse . encode . SuccessApiResponse
+
+failure :: H.Error -> ServerPart Response
+failure = ok . toResponse . encode . FailureApiResponse
 
 
 -- API endpoint to list all groups
 listGroups :: ServerPart Response
 listGroups = do
     groups <- liftIO H.getAllGroups
-    apiResponse $ SuccessApiResponse $ Just groups
+    success $ Just groups
 
 
 -- API endpoint to list PIDs of tasks in a group
@@ -43,8 +47,8 @@ showGroup :: H.Group -> ServerPart Response
 showGroup group = do
     maybePids <- liftIO $ H.getTasksOfGroup group
     case maybePids of
-        Left error -> apiResponse $ FailureApiResponse error
-        Right pids -> apiResponse $ SuccessApiResponse $ Just pids
+        Left error -> failure error
+        Right pids -> success $ Just pids
 
 
 -- API endpoint to show details of a task
@@ -53,8 +57,8 @@ showTask :: H.Pid -> ServerPart Response
 showTask pid = do
     maybeTask <- liftIO $ H.getTask pid
     case maybeTask of
-        Left error -> apiResponse $ FailureApiResponse error
-        Right task -> apiResponse $ SuccessApiResponse $ Just task
+        Left error -> failure error
+        Right task -> success $ Just task
 
 
 -- API endpoint to add a task to a group
@@ -67,6 +71,6 @@ addTaskToGroup group = do
         [(pid, "")] -> do
             result <- liftIO $ H.addTaskToGroup pid group
             case result of
-                Left error -> apiResponse $ FailureApiResponse error
-                Right _ -> apiResponse $ SuccessApiResponse (Nothing :: Maybe String)
-        _ -> apiResponse $ FailureApiResponse $ H.toError H.NoSuchTask
+                Left error -> failure error
+                Right _ -> success (Nothing :: Maybe String)
+        _ -> failure $ H.toError H.NoSuchTask

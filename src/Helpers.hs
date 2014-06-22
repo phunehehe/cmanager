@@ -78,8 +78,6 @@ taskExists pid = doesDirectoryExist $ proc </> show pid
 -- Look for all available groups
 getAllGroups :: IO [Group]
 getAllGroups = do
-    -- The depth limit is needed so that the /sys/fs/cgroup root directory
-    -- won't be included
     taskFiles <- find always (fileName ==? "tasks") cgroup
     return $ map (makeRelative cgroup . takeDirectory) taskFiles
 
