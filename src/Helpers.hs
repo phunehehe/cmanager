@@ -7,7 +7,7 @@ import Control.Monad (guard)
 import Control.Monad.Trans (lift, liftIO)
 import Control.Monad.Trans.Either (runEitherT, hoistEither)
 import Data.Aeson (ToJSON)
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, isInfixOf)
 import Data.List.Split (splitOn)
 import GHC.Generics (Generic)
 import System.Directory (doesDirectoryExist, canonicalizePath)
@@ -122,25 +122,35 @@ getCmdLine pid = do
 
 -- Look for the groups that a task belongs to, treating the subsystems
 -- controlling a group as a part of the group's name
--- XXX: Sometimes subsystems are listed in different orders (e.g. cpu,cpuacct
--- in /sys/fs/cgroup and cpuacct,cpu in /proc/PID/cgroup). This will result in
--- NoSuchGroup errors.
 getGroupsOfTask :: Pid -> IO [String]
 getGroupsOfTask pid = do
-    contents <- readFile $ proc </> show pid </> "cgroup"
-    return $ map convertOne $ lines contents
+    cgroupsRaw <- readFile $ proc </> show pid </> "cgroup"
+    mountsRaw <- readFile $ proc </> "mounts"
+    let mounts = filter isCgroup . map words $ lines mountsRaw
+    return $ map (lineToGroup mounts) $ lines cgroupsRaw
     where
-        -- Each line normally has the form:
+
+        -- Check whether a mount entry is for a CGroup
+        isCgroup = (==) "cgroup" . mountType
+        -- Check whether a mount entry contains given hierarchies
+        containsHiers hiers = isInfixOf hiers . mountOptions
+
+        -- Each entry in /proc/mounts has the form
+        -- cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpuacct,cpu 0 0
+        mountTarget mount = mount !! 1
+        mountType mount = mount !! 2
+        mountOptions mount = mount !! 3
+
+        -- Look for the group name of a line in /proc/PID/cgroup
+        -- Each cgroup line has the form:
         -- 4:memory:/awesome_group
-        -- But if a hierachy name is supplied a line is like this instead:
-        -- 2:name=systemd:/user.slice/user-1000.slice/session-4.scope
-        convertOne line
-            | path == "/" = hier
-            | otherwise = hier ++ path
+        lineToGroup mounts line
+            | path == "/" = myHier
+            | otherwise = myHier ++ path
             where
-                realHier tempHier = last $ splitOn "=" tempHier
-                _:tempHier:path:[] = splitOn ":" line
-                hier = realHier tempHier
+                _:hiers:path:[] = splitOn ":" line
+                myMount = head $ filter (containsHiers hiers) mounts
+                myHier = makeRelative cgroup $ mountTarget myMount
 
 
 -- Try to add a task to a group
