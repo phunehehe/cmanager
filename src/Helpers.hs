@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE OverloadedStrings, DeriveGeneric #-}
 module Helpers where
 
 
@@ -15,7 +15,7 @@ import GHC.Generics (Generic)
 import System.Directory (doesDirectoryExist, canonicalizePath)
 import System.FilePath (makeRelative, (</>))
 import System.FilePath.Find ((>?), (&&?), (==?))
-import System.IO (hPutStrLn, stderr)
+import System.IO (hPrint, stderr)
 import System.IO.Error (tryIOError, isDoesNotExistError)
 
 
@@ -79,11 +79,11 @@ taskExists pid = doesDirectoryExist $ proc </> show pid
 
 -- Look for all available groups
 getAllGroups :: IO [Group]
-getAllGroups =
+getAllGroups = do
     -- The depth limit is needed so that the /sys/fs/cgroup root directory
     -- won't be included
-    F.find F.always (F.fileType ==? F.Directory &&? F.depth >? 1) cgroup
-    >>= return . map (makeRelative cgroup)
+    absPaths <- F.find F.always (F.fileType ==? F.Directory &&? F.depth >? 1) cgroup
+    return $ map (makeRelative cgroup) absPaths
 
 
 -- Look for all PIDs of tasks in a group
@@ -150,16 +150,16 @@ addTaskToGroup :: Pid -> String -> IO (Either Error ())
 addTaskToGroup pid group = runEitherT $ do
     -- FIXME: This is not atomic
     exist <- liftIO $ taskExists pid
-    if not exist
-        then hoistEither $ Left $ toError NoSuchTask
-        else hoistEither $ Right ()
+    hoistEither $ if not exist
+        then Left $ toError NoSuchTask
+        else Right ()
     exist <- liftIO $ groupExists group
-    if not exist
-        then hoistEither $ Left $ toError NoSuchGroup
-        else hoistEither $ Right ()
+    hoistEither $ if not exist
+        then Left $ toError NoSuchGroup
+        else Right ()
     result <- lift $ tryIOError $ appendFile (cgroup </> group </> "tasks") (show pid)
     case result of
         Left exception -> do
-            lift $ hPutStrLn stderr $ show exception
+            lift $ hPrint stderr exception
             hoistEither $ Left $ toError UnknownError
         Right _ -> hoistEither $ Right ()

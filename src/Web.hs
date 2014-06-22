@@ -69,5 +69,5 @@ showTask maybeMessage pid = do
     case maybeTask of
         Left _ -> mzero
         Right task -> do
-            allGroups <- liftIO $ H.getAllGroups
+            allGroups <- liftIO H.getAllGroups
             ok $ toResponse $ T.showTaskTemplate maybeMessage task allGroups $ H.groups task

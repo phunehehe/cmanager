@@ -7,6 +7,7 @@ import qualified Text.Blaze.Html5.Attributes as A
 
 import Control.Monad (forM_)
 import Data.List ((\\))
+import Data.Maybe (fromMaybe)
 import Data.Monoid (mempty)
 import Network.HTTP.Base (urlEncode)
 import System.FilePath ((</>))
@@ -89,10 +90,10 @@ template title body = H.docTypeHtml ! A.lang "en" $ do
         H.link ! A.href "/css/chosen-bootstrap.css" ! A.rel "stylesheet"
         H.link ! A.href "/css/cmanager.css" ! A.rel "stylesheet"
     H.body $ do
-        H.div ! A.class_ "navbar navbar-inverse navbar-fixed-top" $ H.div ! A.class_ "container" $ do
-            H.div ! A.class_ "navbar-header" $ do
+        H.div ! A.class_ "navbar navbar-inverse navbar-fixed-top" $
+            H.div ! A.class_ "container" $ H.div ! A.class_ "navbar-header" $
                 H.a ! A.class_ "navbar-brand" ! A.href "/" $ "CManager"
-        H.div ! A.class_ "container" $ do
+        H.div ! A.class_ "container" $
             body
         H.script ! A.src "/js/jquery.min.js" $ mempty
         H.script ! A.src "/js/bootstrap.min.js" $ mempty
@@ -109,17 +110,15 @@ listGroupTemplate groups = template "All Groups" $ do
 
 -- Render the "show group" page, with the list of tasks on the left, a form on
 -- the right and an optional message
-showGroupTemplate :: (Maybe Html) -> E.Group -> [E.Pid] -> Html
+showGroupTemplate :: Maybe Html -> E.Group -> [E.Pid] -> Html
 showGroupTemplate maybeMessage group tasks = template title $ do
-    case maybeMessage of
-        Just message -> message
-        Nothing -> mempty
+    fromMaybe mempty maybeMessage
     H.h1 $ toHtml title
     H.div ! A.class_ "row" $ do
         H.div ! A.class_ "col-md-6" $ do
             H.p "Here are the tasks in this group:"
             H.ul $ forM_ tasks taskToLi
-        H.div ! A.class_ "col-md-6" $ do
+        H.div ! A.class_ "col-md-6" $
             H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
                 H.legend "Add a task to this group"
                 H.input ! A.name "pid" ! A.type_ "text"
@@ -136,19 +135,16 @@ showGroupTemplate maybeMessage group tasks = template title $ do
 
 -- Render the "show task" page, with the full command line on top, the list of
 -- groups on the left, a form on the right and an optional message
-showTaskTemplate :: (Maybe Html) -> E.Task -> [E.Group] -> [E.Group] -> Html
+showTaskTemplate :: Maybe Html -> E.Task -> [E.Group] -> [E.Group] -> Html
 showTaskTemplate maybeMessage task allGroups belongingGroups = template title $ do
-    case maybeMessage of
-        Just message -> message
-        Nothing -> mempty
+    fromMaybe mempty maybeMessage
     H.h1 $ toHtml title
     H.pre ! A.class_ "pre-scrollable" $ toHtml $ E.cmdLine task
     H.div ! A.class_ "row" $ do
         H.div ! A.class_ "col-md-6" $ do
             H.p "Here are the groups this task belongs to:"
             H.ul $ forM_ belongingGroups groupToLi
-        H.div ! A.class_ "col-md-6" $ do
-            showForm allGroups belongingGroups
+        H.div ! A.class_ "col-md-6" $ showForm allGroups belongingGroups
     where
         title = printf "Task %d" $ E.pid task :: String
 
@@ -158,7 +154,7 @@ showTaskTemplate maybeMessage task allGroups belongingGroups = template title $ 
 
         -- Render a dropdown menu with groups the current task does not belong to
         showForm :: [E.Group] -> [E.Group] -> Html
-        showForm allGroups belongingGroups = do
+        showForm allGroups belongingGroups =
             H.form ! A.method "POST" ! A.class_ "form-inline" $ H.fieldset $ do
                 H.legend "Add this task to a group"
                 H.select ! A.class_ "form-control chosen-select"

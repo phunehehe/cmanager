@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, GADTs, DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, GADTs #-}
 module Api where
 
 
@@ -17,7 +17,7 @@ data ApiResponse a where
 
 instance ToJSON (ApiResponse a) where
     toJSON (SuccessApiResponse maybeData) = object $
-        ["success" .= True] ++
+        ("success" .= True) :
         case maybeData of
             Just data_ -> ["data" .= data_]
             Nothing -> []
