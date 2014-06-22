@@ -130,9 +130,9 @@ getGroupsOfTask pid = do
     contents <- readFile $ proc </> show pid </> "cgroup"
     return $ map convertOne $ lines contents
     where
-        -- Each line has the form:
+        -- Each line normally has the form:
         -- 4:memory:/awesome_group
-        -- However sometimes the line is like this for no documented reason:
+        -- But if a hierachy name is supplied a line is like this instead:
         -- 2:name=systemd:/user.slice/user-1000.slice/session-4.scope
         convertOne line
             | path == "/" = hier
