@@ -1,5 +1,5 @@
-{ cabal, aeson, blazeHtml, filemanip, filepath, happstackLite, HTTP
-, mtl, split, text
+{ cabal, aeson, blazeHtml, either, filemanip, filepath
+, happstackLite, HTTP, mtl, split, text
 }:
 
 cabal.mkDerivation (self: {
@@ -9,8 +9,8 @@ cabal.mkDerivation (self: {
   isLibrary = false;
   isExecutable = true;
   buildDepends = [
-    aeson blazeHtml filemanip filepath happstackLite HTTP mtl split
-    text
+    aeson blazeHtml either filemanip filepath happstackLite HTTP mtl
+    split text
   ];
   meta = {
     homepage = "https://bitbucket.org/phunehehe/cmanager";

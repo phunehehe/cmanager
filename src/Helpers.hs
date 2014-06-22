@@ -6,6 +6,8 @@ import qualified System.FilePath.Find as F
 
 import Control.Exception (tryJust)
 import Control.Monad (guard)
+import Control.Monad.Trans (lift, liftIO)
+import Control.Monad.Trans.Either (runEitherT, hoistEither)
 import Data.Aeson (ToJSON)
 import Data.List (isPrefixOf)
 import Data.List.Split (splitOn)
@@ -145,22 +147,19 @@ getGroupsOfTask pid = do
 
 -- Try to add a task to a group
 addTaskToGroup :: Pid -> String -> IO (Either Error ())
-addTaskToGroup pid group = do
+addTaskToGroup pid group = runEitherT $ do
     -- FIXME: This is not atomic
-    -- FIXME: Ugly nested if statements
-    exist <- taskExists pid
-    if exist
-        then do
-            exist <- groupExists group
-            if exist
-                then doIt
-                else return $ Left $ toError NoSuchGroup
-        else return $ Left $ toError NoSuchTask
-    where
-        doIt = do
-            result <- tryIOError $ appendFile (cgroup </> group </> "tasks") (show pid)
-            case result of
-                Left exception -> do
-                    hPutStrLn stderr $ show exception
-                    return $ Left $ toError UnknownError
-                Right _ -> return $ Right ()
+    exist <- liftIO $ taskExists pid
+    if not exist
+        then hoistEither $ Left $ toError NoSuchTask
+        else hoistEither $ Right ()
+    exist <- liftIO $ groupExists group
+    if not exist
+        then hoistEither $ Left $ toError NoSuchGroup
+        else hoistEither $ Right ()
+    result <- lift $ tryIOError $ appendFile (cgroup </> group </> "tasks") (show pid)
+    case result of
+        Left exception -> do
+            lift $ hPutStrLn stderr $ show exception
+            hoistEither $ Left $ toError UnknownError
+        Right _ -> hoistEither $ Right ()
