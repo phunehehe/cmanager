@@ -7,7 +7,7 @@ import Control.Monad (guard)
 import Control.Monad.Trans (lift, liftIO)
 import Control.Monad.Trans.Either (runEitherT, hoistEither)
 import Data.Aeson (ToJSON)
-import Data.List (isPrefixOf, isInfixOf)
+import Data.List (isPrefixOf, isSuffixOf)
 import Data.List.Split (splitOn)
 import GHC.Generics (Generic)
 import System.Directory (doesDirectoryExist, canonicalizePath)
@@ -133,7 +133,10 @@ getGroupsOfTask pid = do
         -- Check whether a mount entry is for a CGroup
         isCgroup = (==) "cgroup" . mountType
         -- Check whether a mount entry contains given hierarchies
-        containsHiers hiers = isInfixOf hiers . mountOptions
+        -- It was observed that CGroup information is always at the end of
+        -- mount options, even though there is no supporting documentation.
+        -- TODO: What if group names overlap?
+        containsHiers hiers = isSuffixOf hiers . mountOptions
 
         -- Each entry in /proc/mounts has the form
         -- cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpuacct,cpu 0 0
