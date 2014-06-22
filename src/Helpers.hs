@@ -2,8 +2,6 @@
 module Helpers where
 
 
-import qualified System.FilePath.Find as F
-
 import Control.Exception (tryJust)
 import Control.Monad (guard)
 import Control.Monad.Trans (lift, liftIO)
@@ -13,8 +11,8 @@ import Data.List (isPrefixOf)
 import Data.List.Split (splitOn)
 import GHC.Generics (Generic)
 import System.Directory (doesDirectoryExist, canonicalizePath)
-import System.FilePath (makeRelative, (</>))
-import System.FilePath.Find ((>?), (&&?), (==?))
+import System.FilePath (takeDirectory, makeRelative, (</>))
+import System.FilePath.Find (find, always, fileName, (==?))
 import System.IO (hPrint, stderr)
 import System.IO.Error (tryIOError, isDoesNotExistError)
 
@@ -82,8 +80,8 @@ getAllGroups :: IO [Group]
 getAllGroups = do
     -- The depth limit is needed so that the /sys/fs/cgroup root directory
     -- won't be included
-    absPaths <- F.find F.always (F.fileType ==? F.Directory &&? F.depth >? 1) cgroup
-    return $ map (makeRelative cgroup) absPaths
+    taskFiles <- find always (fileName ==? "tasks") cgroup
+    return $ map (makeRelative cgroup . takeDirectory) taskFiles
 
 
 -- Look for all PIDs of tasks in a group
