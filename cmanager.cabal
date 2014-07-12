@@ -18,7 +18,7 @@ synopsis:            A web service that manages CGroups
 -- description:
 
 -- URL for the project homepage or repository.
-homepage:            https://bitbucket.org/phunehehe/cmanager
+homepage:            https://github.com/phunehehe/cmanager
 
 -- The license under which the package is released.
 license:             OtherLicense

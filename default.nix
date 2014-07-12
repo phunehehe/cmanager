@@ -13,7 +13,7 @@ cabal.mkDerivation (self: {
     split text
   ];
   meta = {
-    homepage = "https://bitbucket.org/phunehehe/cmanager";
+    homepage = "https://github.com/phunehehe/cmanager";
     description = "A web service that manages CGroups";
     license = "unknown";
     platforms = self.ghc.meta.platforms;
